@@ -15,12 +15,22 @@ import { toSvg } from '../../../packages/render/src/svg.ts';
 import { t } from '../i18n.ts';
 import type { ViewHost } from './host.ts';
 
-interface Slide {
+interface CoverSlide {
+  readonly kind: 'cover';
+  readonly title: string;
+  readonly subtitle: string;
+}
+
+interface MapSlide {
+  readonly kind: 'map';
   readonly title: string;
   readonly rootId: TopicId;
   readonly structure: StructureKind;
+  readonly x: number;
   readonly note?: string;
 }
+
+type Slide = CoverSlide | MapSlide;
 
 /** 以某个主题为根，裁剪出仅包含其后代的画布，用于单页演示。 */
 function subtreeSheet(source: Sheet, rootId: TopicId, structure: StructureKind): Sheet {
@@ -84,6 +94,9 @@ export class PitchView {
   private index = 0;
   private cachedSheet: Sheet | null = null;
   private cachedSlides: Slide[] = [];
+  private lastX: number | null = null;
+  private lastKind: 'cover' | 'map' | null = null;
+  private navigation: 'next' | 'prev' | null = null;
 
   constructor(el: HTMLElement, host: ViewHost, presentation = false) {
     this.el = el;
@@ -99,6 +112,7 @@ export class PitchView {
     const count = this.slideCount;
     if (count === 0) return;
     this.index = (this.index + 1) % count;
+    this.navigation = 'next';
     this.render();
   }
 
@@ -106,11 +120,15 @@ export class PitchView {
     const count = this.slideCount;
     if (count === 0) return;
     this.index = (this.index - 1 + count) % count;
+    this.navigation = 'prev';
     this.render();
   }
 
   reset(): void {
     this.index = 0;
+    this.navigation = null;
+    this.lastX = null;
+    this.lastKind = null;
     this.render();
   }
 
@@ -166,30 +184,34 @@ export class PitchView {
       return box.x + box.w / 2 < rootBox.x + rootBox.w / 2;
     };
 
-    const cover: Slide = {
-      title: stripRich(root.text),
-      rootId: root.id,
-      structure: sheet.structure,
-      note: root.note
+    const cover: CoverSlide = {
+      kind: 'cover',
+      title: stripRich(root.text) || '织思 WeaveMind',
+      subtitle: sheet.title
     };
 
     const pages = root.children
       .map((id) => sheet.topics[id])
       .filter((topic): topic is NonNullable<typeof topic> => Boolean(topic))
       .filter((topic) => topic.kind !== 'summary')
-      .map<Slide>((branch) => ({
-        title: stripRich(branch.text),
-        rootId: branch.id,
-        structure: branchStructure(sheet.structure, sideOf(branch.id)),
-        note: branch.note
-      }));
+      .map<MapSlide>((branch) => {
+        const box = fullLayout.boxes.get(branch.id);
+        return {
+          kind: 'map',
+          title: stripRich(branch.text),
+          rootId: branch.id,
+          structure: branchStructure(sheet.structure, sideOf(branch.id)),
+          x: box ? box.x + box.w / 2 : 0,
+          note: branch.note
+        };
+      });
 
     this.cachedSheet = sheet;
     this.cachedSlides = [cover, ...pages];
     return this.cachedSlides;
   }
 
-  private renderMap(slide: Slide): string {
+  private renderMap(slide: MapSlide): string {
     const source = this.host.sheet();
     const sheet = subtreeSheet(source, slide.rootId, slide.structure);
     const measure = createEstimateMeasurer();
@@ -208,6 +230,18 @@ export class PitchView {
     if (this.index >= slides.length) this.index = 0;
     const slide = slides[this.index]!;
     const page = `${this.index + 1} / ${slides.length}`;
+
+    let motion: 'none' | 'zoom' | 'left' | 'right' = 'none';
+    if (this.navigation && slide.kind === 'map') {
+      if (this.lastKind !== 'map' || this.lastX === null) {
+        motion = 'zoom';
+      } else {
+        motion = slide.x >= this.lastX ? 'right' : 'left';
+      }
+    }
+    this.lastKind = slide.kind;
+    this.lastX = slide.kind === 'map' ? slide.x : null;
+    this.navigation = null;
 
     const bar = this.presentation
       ? `<div class="pitch-bar present-bar">` +
@@ -230,19 +264,30 @@ export class PitchView {
         `<button class="pbtn" data-act="exit">${t('退出')}</button>` +
         `</div>`;
 
+    const stage = slide.kind === 'cover'
+      ? `<div class="slide cover-slide">` +
+        `<div class="cover-mark">${t('演说模式')}</div>` +
+        `<h1 class="cover-title">${escapeHtml(slide.title)}</h1>` +
+        `<div class="cover-rule"></div>` +
+        `<div class="cover-sub">${escapeHtml(slide.subtitle)}</div>` +
+        `<span class="slide-page">${page}</span>` +
+        `</div>`
+      : `<div class="slide map-slide motion-${motion}">` +
+        `<div class="slide-head">` +
+        `<div class="slide-kicker">${t('演说模式')}</div>` +
+        `<h1 class="slide-title">${escapeHtml(slide.title)}</h1>` +
+        `</div>` +
+        `<div class="slide-map">${this.renderMap(slide)}</div>` +
+        (slide.note ? `<div class="slide-note">${escapeHtml(slide.note)}</div>` : '') +
+        `<span class="slide-page">${page}</span>` +
+        `</div>`;
+
     this.el.innerHTML =
       `<div class="pitch-shell${this.presentation ? ' is-presenting' : ''}">` +
       bar +
       `<div class="pitch-stage">` +
-      `<div class="slide map-slide">` +
-      `<div class="slide-head">` +
-      `<div class="slide-kicker">${t('演说模式')}</div>` +
-      `<h1 class="slide-title">${escapeHtml(slide.title)}</h1>` +
-      `</div>` +
-      `<div class="slide-map">${this.renderMap(slide)}</div>` +
-      (slide.note ? `<div class="slide-note">${escapeHtml(slide.note)}</div>` : '') +
-      `<span class="slide-page">${page}</span>` +
-      `</div></div></div>`;
+      stage +
+      `</div></div>`;
 
     this.el.querySelectorAll<HTMLElement>('[data-act]').forEach((button) => {
       button.addEventListener('click', () => {

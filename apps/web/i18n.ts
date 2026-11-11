@@ -62,6 +62,11 @@ const EN: Readonly<Record<string, string>> = {
   '适应画布': 'Fit to canvas',
   '专注模式': 'Zen mode',
   '专注模式（Esc 退出）': 'Zen mode (Esc to exit)',
+  '退出专注': 'Exit zen',
+  '退出专注模式': 'Exit zen mode',
+  '退出专注模式（Esc）': 'Exit zen mode (Esc)',
+  '专注模式：按 Esc 或点击右上角按钮退出':
+    'Zen mode: press Esc or click the top-right button to exit',
   '属性面板': 'Properties panel',
   '语言 / Language': 'Language',
   '视图切换': 'Switch view',
@@ -398,7 +403,7 @@ export function t(text: string, vars?: Readonly<Record<string, string | number>>
 const textOriginals = new WeakMap<Text, string>();
 const attrOriginals = new WeakMap<Element, Record<string, string>>();
 const ATTRS = ['title', 'placeholder', 'aria-label'] as const;
-const ROOTS = ['.bar', '.panel', '.status', '.hint', '#editor', '#boundaryEditor'];
+const ROOTS = ['.bar', '.panel', '.status', '.hint', '.zen-exit', '#editor', '#boundaryEditor'];
 
 function shouldSkip(el: Element): boolean {
   return el.hasAttribute('data-no-i18n') ||

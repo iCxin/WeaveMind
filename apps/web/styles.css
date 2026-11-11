@@ -830,6 +830,44 @@ button.recording { background: #fbeceb; border-color: #d99a92; color: #b3261e; f
 .app.zen .workspace { grid-area: workspace; }
 #btn-zen.on { background: var(--brand-500); border-color: var(--brand-500); color: #fff; }
 
+/* 专注模式：右上角常驻退出入口 */
+.zen-exit {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 90;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 14px;
+  font-size: 12px;
+  color: #fff;
+  background: rgba(28, 37, 48, .90);
+  border: 1px solid rgba(255, 255, 255, .14);
+  border-radius: 20px;
+  box-shadow: 0 8px 26px rgba(16, 30, 46, .26);
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+  opacity: 1;
+  transition: background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+}
+
+.zen-exit:hover {
+  background: rgba(37, 90, 131, .95);
+  color: #fff;
+}
+
+.zen-exit[hidden] { display: none; }
+
+.zen-exit kbd {
+  padding: 2px 5px;
+  font-family: var(--mono);
+  font-size: 10px;
+  background: rgba(255, 255, 255, .18);
+  border-radius: 4px;
+}
+
 /* ================= v0.6: palette & marker grids ================= */
 .swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(34px, 1fr)); gap: 6px; }
 .markers { display: grid; grid-template-columns: repeat(auto-fill, minmax(30px, 1fr)); gap: 6px; }
@@ -1897,6 +1935,127 @@ body.present .present-bar .pbtn:hover {
 }
 
 body.present .map-slide { animation-duration: 480ms; }
+
+/* ================= v0.17: pitch cover & tracking transitions ================= */
+
+/* 封面：纯标题，不展示全览导图 */
+.cover-slide {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 8% 9%;
+  background:
+    radial-gradient(820px 460px at 100% 0, #eaf2f9, rgba(255, 255, 255, 0) 62%),
+    linear-gradient(180deg, #ffffff, #fbfdff);
+  animation: coverIn 560ms var(--ease) both;
+}
+
+.cover-mark {
+  font-family: var(--mono);
+  font-size: clamp(9px, 1.2cqw, 14px);
+  letter-spacing: .26em;
+  text-transform: uppercase;
+  color: var(--brand-500);
+}
+
+.cover-title {
+  max-width: 88%;
+  margin: .28em 0 .34em;
+  font-size: clamp(30px, 7cqw, 94px);
+  line-height: 1.1;
+  letter-spacing: -.025em;
+  color: var(--ink-900);
+}
+
+.cover-rule {
+  width: clamp(56px, 9cqw, 116px);
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--brand-500), #7fb0d1);
+}
+
+.cover-sub {
+  margin-top: clamp(12px, 2.4cqw, 30px);
+  font-size: clamp(11px, 1.5cqw, 20px);
+  letter-spacing: .12em;
+  color: var(--ink-500);
+}
+
+.cover-slide .slide-page { color: var(--ink-300); }
+
+/* 翻页时按分支在整图中的方位做水平跟踪 */
+.map-slide.motion-right,
+.map-slide.motion-left,
+.map-slide.motion-zoom {
+  animation: none;
+}
+
+.map-slide.motion-right .slide-map {
+  animation: trackFromRight 600ms cubic-bezier(.22, 1, .36, 1) both;
+}
+
+.map-slide.motion-left .slide-map {
+  animation: trackFromLeft 600ms cubic-bezier(.22, 1, .36, 1) both;
+}
+
+.map-slide.motion-zoom .slide-map {
+  animation: trackZoom 620ms cubic-bezier(.22, 1, .36, 1) both;
+}
+
+.map-slide.motion-right .slide-head {
+  animation: headFromLeft 520ms cubic-bezier(.22, 1, .36, 1) both;
+}
+
+.map-slide.motion-left .slide-head {
+  animation: headFromRight 520ms cubic-bezier(.22, 1, .36, 1) both;
+}
+
+.map-slide.motion-zoom .slide-head {
+  animation: headZoom 520ms cubic-bezier(.22, 1, .36, 1) both;
+}
+
+.map-slide.motion-right .slide-map svg,
+.map-slide.motion-left .slide-map svg,
+.map-slide.motion-zoom .slide-map svg {
+  animation: none;
+}
+
+@keyframes coverIn {
+  from { opacity: 0; transform: translateY(12px) scale(.994); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes trackFromRight {
+  from { opacity: .25; transform: translateX(7%) scale(1.035); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes trackFromLeft {
+  from { opacity: .25; transform: translateX(-7%) scale(1.035); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes trackZoom {
+  from { opacity: .2; transform: scale(1.05); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes headFromLeft {
+  from { opacity: 0; transform: translateX(-16px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes headFromRight {
+  from { opacity: 0; transform: translateX(16px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes headZoom {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: none; }
+}
 
 
 

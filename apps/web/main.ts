@@ -139,6 +139,7 @@ const langButtons = Array.from(langSwitch.querySelectorAll<HTMLButtonElement>('[
 const panelButton = must('btn-panel');
 const panelBackdrop = must('panelBackdrop');
 const moreButton = must('btn-more');
+const zenExitButton = must('btn-exit-zen');
 
 const pageSearch = (() => {
   try {
@@ -2295,7 +2296,10 @@ stage.addEventListener('contextmenu', (event) => {
   const point = localPoint(event);
   const world = renderer.screenToWorld(point.x, point.y);
   const hit = renderer.hitTest(world.x, world.y);
-  const items: MenuEntry[] = [];
+  const zen = document.querySelector('.app')?.classList.contains('zen') ?? false;
+  const items: MenuEntry[] = zen
+    ? [{ label: '退出专注模式', action: () => toggleZen(false) }, { separator: true }]
+    : [];
 
   if (hit) {
     if (!store.view.selection.has(hit)) store.setSelection([hit]);
@@ -2417,11 +2421,15 @@ window.addEventListener('contextmenu', (event) => {
   if (store.canUndo) items.push({ label: '撤销', action: () => store.undo() });
   if (store.canRedo) items.push({ label: '重做', action: () => store.redo() });
   if (items.length > 0 && !editable) items.push({ separator: true });
+  const zen = document.querySelector('.app')?.classList.contains('zen') ?? false;
   items.push(
     { label: '适应画布', action: () => fitToContent() },
-    { label: '专注模式', action: () => toggleZen() },
-    { label: '属性面板', action: () => setPanelOpen(true) }
+    {
+      label: zen ? '退出专注模式' : '专注模式',
+      action: () => toggleZen(zen ? false : true)
+    }
   );
+  if (!zen) items.push({ label: '属性面板', action: () => setPanelOpen(true) });
   showContextMenu(event.clientX, event.clientY, items);
 });
 
@@ -2572,7 +2580,8 @@ function toggleZen(force?: boolean): void {
   const next = force ?? !app.classList.contains('zen');
   app.classList.toggle('zen', next);
   must('btn-zen').classList.toggle('on', next);
-  if (next) toast('专注模式：按 Esc 退出');
+  zenExitButton.hidden = !next;
+  if (next) toast('专注模式：按 Esc 或点击右上角按钮退出');
   requestAnimationFrame(() => {
     const rect = stage.getBoundingClientRect();
     if (rect.width > 2 && rect.height > 2) {
@@ -2583,6 +2592,7 @@ function toggleZen(force?: boolean): void {
 }
 
 must('btn-zen').addEventListener('click', () => toggleZen());
+zenExitButton.addEventListener('click', () => toggleZen(false));
 must('btn-collapse').addEventListener('click', () => {
   const id = primarySelection();
   if (!id) { toast('请先选中一个主题'); return; }
