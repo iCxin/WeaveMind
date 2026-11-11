@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>织思 WeaveMind</title>
+<link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
+<link rel="stylesheet" href="/apps/web/styles.css">
+</head>
+<body>
+<div class="app">
+
+  <header class="bar">
+    <div class="brand">
+      <img class="logo" src="/assets/logo.svg" alt="织思 WeaveMind" width="28" height="28">
+      <span class="brand-text">
+        <span class="name">织思</span>
+        <span class="sub">WeaveMind</span>
+      </span>
+    </div>
+
+    <div class="group">
+      <button id="btn-new" title="新建 Ctrl+N">新建</button>
+      <button id="btn-open" title="打开 Ctrl+O">打开</button>
+      <button id="btn-save" title="保存到浏览器 Ctrl+S">保存</button>
+    </div>
+
+    <span class="sep"></span>
+
+    <div class="group">
+      <button id="btn-undo" title="撤销 Ctrl+Z">撤销</button>
+      <button id="btn-redo" title="重做 Ctrl+Shift+Z">重做</button>
+    </div>
+
+    <span class="sep"></span>
+
+    <div class="group">
+      <button id="btn-child" title="子主题 Tab">子主题</button>
+      <button id="btn-sibling" title="同级主题 Enter">同级</button>
+      <button id="btn-delete" title="删除 Delete">删除</button>
+    </div>
+
+    <span class="sep"></span>
+
+    <div class="tabs" id="viewTabs" role="tablist" aria-label="视图切换">
+      <button data-mode="map" class="on" role="tab">导图</button>
+      <button data-mode="outline" role="tab">大纲</button>
+      <button data-mode="pitch" role="tab">演说</button>
+      <button data-mode="gantt" role="tab">甘特</button>
+    </div>
+
+    <span class="spacer"></span>
+
+    <label class="searchbox">
+      <input id="search" type="search" placeholder="查找主题 / 备注 / 标签" autocomplete="off">
+      <span id="searchCount"></span>
+    </label>
+
+    <button id="btn-replace" title="查找替换">替换</button>
+
+    <select id="filter" class="filter-select" title="筛选主题">
+      <option value="all">全部主题</option>
+      <option value="marker">有标记</option>
+      <option value="todo">未完成</option>
+      <option value="done">已完成</option>
+      <option value="overdue">已逾期</option>
+      <option value="note">有备注</option>
+      <option value="media">有附件/图片</option>
+    </select>
+
+    <div class="menu" id="exportMenu">
+      <button id="btn-export" title="导出">导出 ▾</button>
+      <div class="menu-list" id="exportList" hidden>
+        <button data-export="wvm">WVM 工程文件</button>
+        <button data-export="png">PNG 图片</button>
+        <button data-export="svg">SVG 矢量</button>
+        <button data-export="md">Markdown</button>
+        <button data-export="opml">OPML</button>
+        <button data-export="xmind">XMind 文件</button>
+        <button data-export="print">打印 / PDF</button>
+      </div>
+    </div>
+
+    <label class="field">
+      <span>结构</span>
+      <select id="structure">
+        <option value="mindmap">思维导图</option>
+        <option value="logic-right">逻辑图（向右）</option>
+        <option value="logic-left">逻辑图（向左）</option>
+        <option value="org-down">组织结构图（向下）</option>
+        <option value="org-up">组织结构图（向上）</option>
+        <option value="tree-right">树形图（向右）</option>
+        <option value="tree-left">树形图（向左）</option>
+        <option value="fishbone-right">鱼骨图（向右）</option>
+        <option value="fishbone-left">鱼骨图（向左）</option>
+        <option value="timeline-right">时间轴（水平）</option>
+      </select>
+    </label>
+
+    <button id="btn-fit" title="适应画布">适应</button>
+    <button id="btn-zen" title="专注模式（Esc 退出）">专注</button>
+    <span class="zoom" id="zoomLabel">100%</span>
+  </header>
+
+  <main class="workspace">
+    <section class="view" id="view-map">
+      <div class="stage" id="stage" role="application" aria-label="思维导图画布">
+        <canvas id="c-static" aria-hidden="true"></canvas>
+        <canvas id="c-overlay" aria-hidden="true"></canvas>
+        <textarea id="editor" spellcheck="false" aria-label="编辑主题文本" hidden></textarea>
+        <input id="boundaryEditor" spellcheck="false" aria-label="编辑外框标题" hidden>
+        <div class="hint" id="hint">拖动主题移动整枝 · 空白拖拽框选（右→左交叉） · 中键/滚轮平移 · 双击节点或外框标题编辑</div>
+      </div>
+    </section>
+
+    <section class="view view-outline" id="view-outline" hidden></section>
+    <section class="view view-pitch" id="view-pitch" hidden></section>
+    <section class="view view-gantt" id="view-gantt" hidden></section>
+
+    <div class="sheetbar" id="sheetbar"></div>
+  </main>
+
+  <aside class="panel">
+    <div class="ptabs" id="panelTabs" role="tablist" aria-label="属性面板">
+      <button data-tab="topic" class="on" role="tab" aria-selected="true">主题</button>
+      <button data-tab="elements" role="tab" aria-selected="false">元素</button>
+      <button data-tab="canvas" role="tab" aria-selected="false">画布</button>
+    </div>
+
+    <div class="pbody">
+      <div class="ppanel" data-panel="topic">
+        <section>
+          <h3>主题</h3>
+          <div class="empty-hint" id="topicEmpty">选中一个主题以编辑属性</div>
+          <div id="topicFields" hidden>
+            <label class="pfield">
+              <span>笔记</span>
+              <textarea id="noteInput" rows="3" placeholder="补充说明，支持多行"></textarea>
+            </label>
+            <div class="row">
+              <span>待办</span>
+              <button class="switch" id="toggle-todo" aria-pressed="false"><i></i></button>
+            </div>
+            <label class="pfield">
+              <span>标签</span>
+              <input id="labelInput" placeholder="输入后回车添加" autocomplete="off">
+            </label>
+            <div class="labels" id="labelList"></div>
+            <label class="pfield">
+              <span>链接</span>
+              <input id="linkInput" placeholder="https://…" autocomplete="off">
+            </label>
+            <button id="btn-open-link" class="wide">打开链接</button>
+          </div>
+        </section>
+
+        <section id="styleSection" hidden>
+          <h3>主题样式</h3>
+          <div class="row">
+            <span>形状</span>
+            <select id="topic-shape">
+              <option value="">默认</option>
+              <option value="rounded">圆角</option>
+              <option value="rect">矩形</option>
+              <option value="pill">胶囊</option>
+              <option value="ellipse">椭圆</option>
+              <option value="diamond">菱形</option>
+              <option value="hexagon">六边形</option>
+            </select>
+          </div>
+          <div class="row">
+            <span>字体</span>
+            <div class="style-toggles">
+              <button type="button" data-style="bold" title="加粗">B</button>
+              <button type="button" data-style="italic" title="斜体"><em>I</em></button>
+              <button type="button" data-style="underline" title="下划线">U</button>
+              <button type="button" data-style="strike" title="删除线">S</button>
+            </div>
+          </div>
+          <div class="row">
+            <span>对齐</span>
+            <div class="style-toggles">
+              <button type="button" data-align="left" title="左对齐">左</button>
+              <button type="button" data-align="center" title="居中">中</button>
+              <button type="button" data-align="right" title="右对齐">右</button>
+            </div>
+          </div>
+          <div class="pfield"><span>填充</span><div class="style-colors" id="fillColors"></div></div>
+          <div class="pfield"><span>文字</span><div class="style-colors" id="textColors"></div></div>
+          <button id="btn-clear-style" class="wide">清除主题样式</button>
+        </section>
+
+        <section>
+          <h3>任务</h3>
+          <div class="row">
+            <span>启用任务</span>
+            <button class="switch" id="toggle-task" aria-pressed="false"><i></i></button>
+          </div>
+          <div id="taskFields" hidden>
+            <div class="row">
+              <span>进度</span>
+              <input type="range" id="task-progress" min="0" max="100" step="5" value="0">
+            </div>
+            <div class="row">
+              <span>优先级</span>
+              <select id="task-priority">
+                <option value="highest">最高</option>
+                <option value="high">高</option>
+                <option value="medium" selected>中</option>
+                <option value="low">低</option>
+                <option value="lowest">最低</option>
+              </select>
+            </div>
+            <label class="pfield"><span>开始</span><input type="date" id="task-start"></label>
+            <label class="pfield"><span>截止</span><input type="date" id="task-due"></label>
+          </div>
+        </section>
+
+        <section>
+          <h3>主题标记</h3>
+          <div class="markers">
+            <button data-marker="flag" title="重要">⚑</button>
+            <button data-marker="star" title="里程碑">★</button>
+            <button data-marker="done" title="已完成">✓</button>
+            <button data-marker="wait" title="待跟进">△</button>
+            <button data-marker="question" title="疑问">?</button>
+            <button data-marker="idea" title="灵感">✦</button>
+            <button data-marker="heart" title="重点">♥</button>
+            <button data-marker="warn" title="风险">!</button>
+            <button data-marker="pin" title="锚点">●</button>
+            <button data-marker="clock" title="待定">◷</button>
+            <button data-marker="prio1" title="优先级 1">1</button>
+            <button data-marker="prio2" title="优先级 2">2</button>
+            <button data-marker="prio3" title="优先级 3">3</button>
+            <button data-marker="prio4" title="优先级 4">4</button>
+            <button data-marker="prio5" title="优先级 5">5</button>
+            <button data-marker="prio6" title="优先级 6">6</button>
+            <button data-marker="prio7" title="优先级 7">7</button>
+            <button data-marker="prio8" title="优先级 8">8</button>
+            <button data-marker="prio9" title="优先级 9">9</button>
+            <button data-marker="progress0" title="进度 0/8">⓪</button>
+            <button data-marker="progress1" title="进度 1/8">①</button>
+            <button data-marker="progress2" title="进度 2/8">②</button>
+            <button data-marker="progress3" title="进度 3/8">③</button>
+            <button data-marker="progress4" title="进度 4/8">④</button>
+            <button data-marker="progress5" title="进度 5/8">⑤</button>
+            <button data-marker="progress6" title="进度 6/8">⑥</button>
+            <button data-marker="progress7" title="进度 7/8">⑦</button>
+            <button data-marker="progress8" title="进度 8/8">⑧</button>
+            <button data-marker="" title="清除标记">—</button>
+          </div>
+          <div class="row">
+            <span>折叠 / 展开</span>
+            <button id="btn-collapse">切换</button>
+          </div>
+        </section>
+      </div>
+
+      <div class="ppanel" data-panel="elements" hidden>
+        <section>
+          <h3>插入元素</h3>
+          <div class="grid2">
+            <button id="btn-boundary">外框</button>
+            <button id="btn-relationship">联系</button>
+            <button id="btn-summary">概要</button>
+            <button id="btn-zone">专区</button>
+            <button id="btn-floating">浮动主题</button>
+            <button id="btn-image">图片</button>
+            <button id="btn-attachment">附件</button>
+            <button id="btn-audio">语音</button>
+            <button id="btn-equation">公式</button>
+          </div>
+          <div class="labels" id="boundaryList"></div>
+          <div class="labels" id="zoneList"></div>
+          <div class="row">
+            <span>清除元素</span>
+            <button id="btn-clear-deco">清除</button>
+          </div>
+          <p class="note" id="mediaInfo">—</p>
+        </section>
+
+        <section>
+          <h3>文档</h3>
+          <dl class="meta">
+            <dt>主题数</dt><dd id="metaTopics">—</dd>
+            <dt>字数</dt><dd id="metaWords">—</dd>
+            <dt>任务</dt><dd id="metaTasks">—</dd>
+            <dt>选中</dt><dd id="metaSelection">无</dd>
+            <dt>状态</dt><dd id="metaState">已保存</dd>
+          </dl>
+        </section>
+      </div>
+
+      <div class="ppanel" data-panel="canvas" hidden>
+        <section>
+          <h3>配色方案</h3>
+          <div class="swatches" id="swatches"></div>
+          <p class="note" id="paletteName">钢蓝</p>
+        </section>
+
+        <section>
+          <h3>画布</h3>
+          <div class="row">
+            <span>深色画布</span>
+            <button class="switch" id="toggle-dark" aria-pressed="false"><i></i></button>
+          </div>
+          <div class="row">
+            <span>彩虹分支</span>
+            <button class="switch on" id="toggle-rainbow" aria-pressed="true"><i></i></button>
+          </div>
+          <div class="row">
+            <span>线条粗细</span>
+            <input type="range" id="line-width" min="1" max="6" step="0.5" value="2">
+          </div>
+          <div class="row">
+            <span>线条样式</span>
+            <select id="edge-style">
+              <option value="curve" selected>曲线</option>
+              <option value="elbow">折线</option>
+              <option value="straight">直线</option>
+            </select>
+          </div>
+          <div class="row">
+            <span>选中字号</span>
+            <input type="range" id="font-size" min="11" max="22" step="1" value="13">
+          </div>
+          <button id="btn-reset-layout" class="wide">恢复自动布局</button>
+        </section>
+
+        <section>
+          <h3>性能</h3>
+          <button id="btn-bench" class="wide">性能自检（2000 节点）</button>
+          <p class="note" id="benchResult">—</p>
+        </section>
+      </div>
+    </div>
+  </aside>
+
+  <footer class="status">
+    <span id="statusLeft">就绪</span>
+    <span id="autosaveState"></span>
+    <span id="statusRight">离线 · 浏览器本地存储</span>
+  </footer>
+</div>
+
+<div id="a11yTree" class="sr-only" role="tree" aria-label="思维导图结构"></div>
+<div class="toast" id="toast" hidden></div>
+<input type="file" id="fileInput" accept=".wvm,.xmind,.md,.markdown,.txt,.opml,.xml" hidden>
+<input type="file" id="imageInput" accept="image/*" hidden>
+<input type="file" id="attachInput" hidden>
+
+<script type="module" src="/apps/web/main.ts"></script>
+</body>
+</html>

@@ -1,0 +1,5 @@
+{
+  "buildCommand": "node --experimental-strip-types tools/build-static.mjs",
+  "outputDirectory": "dist",
+  "nodeVersion": "22"
+}

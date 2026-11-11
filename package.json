@@ -1,0 +1,14 @@
+{
+  "name": "weavemind",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "织思 WeaveMind — 离线优先的思维导图工作台（零依赖实现）",
+  "scripts": {
+    "dev": "node tools/dev-server.mjs",
+    "build": "node tools/build-static.mjs",
+    "push:github": "node tools/push-github.mjs",
+    "bench": "node tools/bench.ts",
+    "test": "node --test packages/core/test/core.test.ts packages/core/test/features.test.ts packages/core/test/decorations.test.ts packages/core/test/editing.test.ts packages/layout/test/layout.test.ts packages/io/test/io.test.ts packages/io/test/convert.test.ts packages/io/test/xmind.test.ts"
+  }
+}
