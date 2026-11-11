@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>织思 WeaveMind — 本地优先的思维导图工作台</title>
+<meta name="description" content="零依赖、离线优先的思维导图工作台。导图、大纲、演说、甘特四视图，支持十余种格式互通。">
+<link rel="icon" type="image/svg+xml" href="../assets/logo.svg">
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+
+<div class="backdrop" aria-hidden="true">
+  <div class="aurora aurora-a"></div>
+  <div class="aurora aurora-b"></div>
+  <div class="aurora aurora-c"></div>
+  <div class="grid-lines"></div>
+  <div class="noise"></div>
+</div>
+
+<header class="site-nav">
+  <a class="brand" href="../index.html" aria-label="织思 WeaveMind">
+    <svg class="brand-mark" viewBox="0 0 40 40" aria-hidden="true">
+      <defs>
+        <linearGradient id="brandGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#61b3e8"/>
+          <stop offset="1" stop-color="#2f6f9f"/>
+        </linearGradient>
+      </defs>
+      <rect x="2" y="2" width="36" height="36" rx="11" fill="url(#brandGrad)"/>
+      <path d="M12 14c5 0 5 12 10 12s5-12 10-12M12 26c5 0 5-12 10-12s5 12 10 12"
+        fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" opacity=".92"/>
+      <circle cx="12" cy="14" r="2.4" fill="#fff"/><circle cx="28" cy="26" r="2.4" fill="#fff"/>
+    </svg>
+    <span class="brand-text"><b>织思</b><i>WeaveMind</i></span>
+  </a>
+  <nav class="nav-links" aria-label="主导航">
+    <a href="#demo">演示</a>
+    <a href="#features">功能</a>
+    <a href="#local">本地优先</a>
+    <a href="https://github.com/iCxin/weavemind" target="_blank" rel="noopener">GitHub</a>
+  </nav>
+  <div class="nav-actions">
+    <a class="ghost-btn" href="../index.html">打开应用</a>
+    <a class="primary-btn" href="https://console.cloud.tencent.com/edgeone/makers/new?repository-url=https://github.com/iCxin/weavemind" target="_blank" rel="noopener">一键部署</a>
+  </div>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="hero-copy">
+      <div class="eyebrow reveal">LOCAL-FIRST MIND MAPPING</div>
+      <h1 class="hero-title reveal">
+        把复杂想法，<br><span>织成一张清晰的图。</span>
+      </h1>
+      <p class="hero-sub reveal">
+        零依赖、离线优先的思维导图工作台。导图、大纲、演说、甘特四视图同源，
+        所有内容留在你的浏览器里。
+      </p>
+      <div class="hero-actions reveal">
+        <a class="primary-btn large" href="../index.html">立即使用</a>
+        <a class="ghost-btn large" href="#demo">观看演示</a>
+      </div>
+      <div class="hero-proof reveal">
+        <span><b>0</b> 运行时依赖</span>
+        <span><b>10</b> 种结构</span>
+        <span><b>100%</b> 本地存储</span>
+      </div>
+    </div>
+
+    <div class="hero-visual" aria-hidden="true">
+      <div class="orbit-glow"></div>
+      <svg class="orbit-map" viewBox="0 0 620 560">
+        <defs>
+          <linearGradient id="rootFill" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#3d88bf"/><stop offset="1" stop-color="#245b84"/>
+          </linearGradient>
+          <filter id="softGlow" x="-40%" y="-40%" width="180%" height="180%">
+            <feGaussianBlur stdDeviation="8" result="b"/>
+            <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+
+        <g class="orbit-edges" fill="none" stroke-linecap="round">
+          <path d="M310 280 C220 280 200 160 118 140" stroke="#4f9bd8" stroke-width="2.2"/>
+          <path d="M310 280 C220 280 200 220 118 228" stroke="#46a37a" stroke-width="2.2"/>
+          <path d="M310 280 C220 280 200 300 118 330" stroke="#c08a3a" stroke-width="2.2"/>
+          <path d="M310 280 C400 280 420 160 502 140" stroke="#8b6bb0" stroke-width="2.2"/>
+          <path d="M310 280 C400 280 420 220 502 228" stroke="#cf6b48" stroke-width="2.2"/>
+          <path d="M310 280 C400 280 420 300 502 330" stroke="#4a8a9a" stroke-width="2.2"/>
+        </g>
+
+        <g class="orbit-node root-node" filter="url(#softGlow)">
+          <rect x="218" y="252" width="184" height="56" rx="16" fill="url(#rootFill)"/>
+          <text x="310" y="286" text-anchor="middle">织思 WeaveMind</text>
+        </g>
+
+        <g class="orbit-node n1"><rect x="42" y="118" width="152" height="42" rx="11"/><text x="118" y="145" text-anchor="middle">需求与调研</text></g>
+        <g class="orbit-node n2"><rect x="42" y="206" width="152" height="42" rx="11"/><text x="118" y="233" text-anchor="middle">设计与架构</text></g>
+        <g class="orbit-node n3"><rect x="42" y="308" width="152" height="42" rx="11"/><text x="118" y="335" text-anchor="middle">开发实现</text></g>
+        <g class="orbit-node n4"><rect x="426" y="118" width="152" height="42" rx="11"/><text x="502" y="145" text-anchor="middle">测试与质量</text></g>
+        <g class="orbit-node n5"><rect x="426" y="206" width="152" height="42" rx="11"/><text x="502" y="233" text-anchor="middle">核心体验</text></g>
+        <g class="orbit-node n6"><rect x="426" y="308" width="152" height="42" rx="11"/><text x="502" y="335" text-anchor="middle">发布计划</text></g>
+
+        <g class="orbit-dots">
+          <circle cx="118" cy="140" r="3.2"/><circle cx="118" cy="228" r="3.2"/><circle cx="118" cy="330" r="3.2"/>
+          <circle cx="502" cy="140" r="3.2"/><circle cx="502" cy="228" r="3.2"/><circle cx="502" cy="330" r="3.2"/>
+        </g>
+      </svg>
+      <div class="float-chip chip-a">自动保存 · 浏览器本地</div>
+      <div class="float-chip chip-b">16:9 演说与全屏</div>
+      <div class="float-chip chip-c">XMind / Markdown / SVG</div>
+    </div>
+  </section>
+
+  <section class="stats reveal" aria-label="项目数据">
+    <div><b data-count="10">0</b><span>种布局结构</span></div>
+    <div><b data-count="4">0</b><span>个同源视图</span></div>
+    <div><b data-count="29">0</b><span>种主题标记</span></div>
+    <div><b data-count="0">0</b><span>运行时依赖</span></div>
+  </section>
+
+  <section class="tour-section" id="demo">
+    <div class="section-head reveal">
+      <div class="eyebrow">GUIDED TOUR</div>
+      <h2>60 秒，看懂织思如何工作</h2>
+      <p>从一张导图，到提纲、演示与排期。所有视图共享同一份文档，不产生副本。</p>
+    </div>
+
+    <div class="tour-shell reveal" id="tour">
+      <div class="tour-window">
+        <div class="tour-chrome">
+          <span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span>
+          <span class="url">weavemind.app / 示例</span>
+          <span class="chrome-spacer"></span>
+          <span class="chrome-badge">离线</span>
+        </div>
+
+        <div class="tour-app">
+          <aside class="tour-rail" aria-hidden="true">
+            <span class="rail-logo">织</span>
+            <span class="rail-item on" data-rail="map">◉</span>
+            <span class="rail-item" data-rail="outline">≡</span>
+            <span class="rail-item" data-rail="pitch">▷</span>
+            <span class="rail-item" data-rail="gantt">▥</span>
+          </aside>
+
+          <div class="tour-main">
+            <div class="tour-toolbar" aria-hidden="true">
+              <span class="tool-group"><i>新建</i><i>打开</i><i>保存</i></span>
+              <span class="tool-sep"></span>
+              <span class="tool-group"><i>撤销</i><i>重做</i></span>
+              <span class="tool-sep"></span>
+              <span class="tool-group accent"><i>子主题</i><i>同级</i></span>
+              <span class="tool-spacer"></span>
+              <span class="tool-group views"><i class="on">导图</i><i>大纲</i><i>演说</i><i>甘特</i></span>
+              <span class="tool-group"><i>结构</i><i>导出</i></span>
+            </div>
+
+            <div class="tour-canvas">
+              <div class="scene scene-map active" data-scene="0">
+                <svg class="mini-map" viewBox="0 0 900 500" aria-hidden="true">
+                  <g class="mini-edges" fill="none" stroke-linecap="round">
+                    <path d="M450 250 C360 250 330 120 220 112" stroke="#4f9bd8"/>
+                    <path d="M450 250 C360 250 330 210 220 210" stroke="#46a37a"/>
+                    <path d="M450 250 C360 250 330 300 220 312" stroke="#c08a3a"/>
+                    <path d="M450 250 C540 250 570 120 680 112" stroke="#8b6bb0"/>
+                    <path d="M450 250 C540 250 570 210 680 210" stroke="#cf6b48"/>
+                    <path d="M450 250 C540 250 570 300 680 312" stroke="#4a8a9a"/>
+                  </g>
+                  <g class="mini-node mini-root">
+                    <rect x="362" y="222" width="176" height="56" rx="15"/>
+                    <text x="450" y="256" text-anchor="middle">产品发布</text>
+                  </g>
+                  <g class="mini-node" style="--i:0"><rect x="130" y="92" width="150" height="40" rx="10"/><text x="205" y="117" text-anchor="middle">需求梳理</text></g>
+                  <g class="mini-node" style="--i:1"><rect x="130" y="190" width="150" height="40" rx="10"/><text x="205" y="215" text-anchor="middle">信息架构</text></g>
+                  <g class="mini-node" style="--i:2"><rect x="130" y="292" width="150" height="40" rx="10"/><text x="205" y="317" text-anchor="middle">交互原型</text></g>
+                  <g class="mini-node" style="--i:3"><rect x="620" y="92" width="150" height="40" rx="10"/><text x="695" y="117" text-anchor="middle">视觉设计</text></g>
+                  <g class="mini-node selected" style="--i:4"><rect x="620" y="190" width="150" height="40" rx="10"/><text x="695" y="215" text-anchor="middle">前端实现</text></g>
+                  <g class="mini-node" style="--i:5"><rect x="620" y="292" width="150" height="40" rx="10"/><text x="695" y="317" text-anchor="middle">测试发布</text></g>
+                </svg>
+                <div class="mini-cursor"></div>
+                <aside class="mini-panel">
+                  <div class="panel-title">主题样式</div>
+                  <div class="panel-row"><span>形状</span><b>圆角</b></div>
+                  <div class="panel-row"><span>填充</span><span class="swatches"><i style="--c:#eef4f9"></i><i style="--c:#dceefc" class="on"></i><i style="--c:#e8f2ea"></i><i style="--c:#f7efe2"></i></span></div>
+                  <div class="panel-row"><span>标记</span><b>★ 里程碑</b></div>
+                  <div class="panel-note">拖动整枝 · 自动排斥</div>
+                </aside>
+                <div class="mini-toast">已自动保存到浏览器</div>
+              </div>
+
+              <div class="scene scene-outline" data-scene="1">
+                <div class="outline-pane">
+                  <div class="outline-row root"><span class="bullet">●</span><b>产品发布</b><em class="task done">100%</em></div>
+                  <div class="outline-row l1"><span class="bullet">•</span><span>需求梳理</span><i class="tag">核心</i><em class="task done">100%</em></div>
+                  <div class="outline-row l2"><span class="bullet">•</span><span>用户访谈</span><i class="mark">✓</i></div>
+                  <div class="outline-row l2"><span class="bullet">•</span><span>竞品拆解</span><i class="mark">★</i></div>
+                  <div class="outline-row l1"><span class="bullet">•</span><span>信息架构</span><em class="task">70%</em></div>
+                  <div class="outline-row l2"><span class="bullet">•</span><span>导航结构</span></div>
+                  <div class="outline-row l2"><span class="bullet">•</span><span>内容优先级</span><i class="mark">?</i></div>
+                  <div class="outline-row l1"><span class="bullet">•</span><span>交互原型</span><em class="task">45%</em></div>
+                  <div class="outline-row l1"><span class="bullet">•</span><span>前端实现</span><i class="tag">进行中</i><em class="task">60%</em></div>
+                  <div class="outline-row l1"><span class="bullet">•</span><span>测试发布</span><em class="task">20%</em></div>
+                </div>
+                <aside class="outline-side">
+                  <div class="panel-title">文档统计</div>
+                  <div class="big-stat">31<small>个主题</small></div>
+                  <div class="stat-line"><span>任务</span><b>6</b></div>
+                  <div class="stat-line"><span>已完成</span><b>2</b></div>
+                  <div class="stat-line"><span>字数</span><b>286</b></div>
+                  <div class="outline-note">与导图实时同源，改一处两边同步。</div>
+                </aside>
+              </div>
+
+              <div class="scene scene-pitch" data-scene="2">
+                <div class="pitch-bg"></div>
+                <div class="pitch-slide">
+                  <div class="pitch-kicker">PITCH MODE</div>
+                  <h3>前端实现</h3>
+                  <svg viewBox="0 0 720 320" aria-hidden="true">
+                    <g fill="none" stroke-linecap="round" stroke-width="2">
+                      <path d="M120 160 C230 160 300 80 400 80" stroke="#4f9bd8"/>
+                      <path d="M120 160 C230 160 300 160 400 160" stroke="#46a37a"/>
+                      <path d="M120 160 C230 160 300 240 400 240" stroke="#c08a3a"/>
+                      <path d="M400 80 C500 80 540 60 620 60" stroke="#8b6bb0"/>
+                      <path d="M400 160 C500 160 540 160 620 160" stroke="#cf6b48"/>
+                      <path d="M400 240 C500 240 540 250 620 250" stroke="#4a8a9a"/>
+                    </g>
+                    <g class="pitch-nodes">
+                      <rect x="48" y="136" width="146" height="48" rx="13" fill="#255a83"/>
+                      <text x="121" y="166" text-anchor="middle" fill="#fff">前端实现</text>
+                      <rect x="400" y="60" width="150" height="40" rx="10" fill="#eef4f9"/><text x="475" y="85" text-anchor="middle" fill="#255a83">零依赖运行时</text>
+                      <rect x="400" y="140" width="150" height="40" rx="10" fill="#e8f2ea"/><text x="475" y="165" text-anchor="middle" fill="#2b7a4b">双 Canvas</text>
+                      <rect x="400" y="220" width="150" height="40" rx="10" fill="#f7efe2"/><text x="475" y="245" text-anchor="middle" fill="#8a5a2b">多语言</text>
+                      <rect x="620" y="40" width="84" height="36" rx="9" fill="#f2eef8"/><text x="662" y="63" text-anchor="middle" fill="#6b4b8a">LOD</text>
+                      <rect x="620" y="142" width="84" height="36" rx="9" fill="#f6e9e4"/><text x="662" y="165" text-anchor="middle" fill="#b0552f">快捷键</text>
+                      <rect x="620" y="232" width="84" height="36" rx="9" fill="#eef7f7"/><text x="662" y="255" text-anchor="middle" fill="#3a7a8a">暗色</text>
+                    </g>
+                  </svg>
+                  <div class="pitch-page">2 / 7</div>
+                </div>
+                <div class="pitch-dots"><i></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i></div>
+              </div>
+
+              <div class="scene scene-gantt" data-scene="3">
+                <div class="gantt-pane">
+                  <div class="gantt-head">
+                    <span>任务</span>
+                    <span class="gantt-weeks"><i>10/27</i><i>11/03</i><i>11/10</i><i>11/17</i><i>11/24</i></span>
+                  </div>
+                  <div class="gantt-row"><span class="gantt-name"><i class="gdot"></i>需求梳理</span><span class="gantt-track"><i class="gantt-bar c1" style="--l:2%;--w:30%"></i></span></div>
+                  <div class="gantt-row"><span class="gantt-name"><i class="gdot"></i>信息架构</span><span class="gantt-track"><i class="gantt-bar c2" style="--l:26%;--w:26%"></i></span></div>
+                  <div class="gantt-row"><span class="gantt-name"><i class="gdot"></i>交互原型</span><span class="gantt-track"><i class="gantt-bar c3" style="--l:44%;--w:24%"></i></span></div>
+                  <div class="gantt-row"><span class="gantt-name"><i class="gdot"></i>前端实现</span><span class="gantt-track"><i class="gantt-bar c4" style="--l:56%;--w:28%"></i></span></div>
+                  <div class="gantt-row"><span class="gantt-name"><i class="gdot"></i>测试发布</span><span class="gantt-track"><i class="gantt-bar c5" style="--l:78%;--w:20%"></i></span></div>
+                  <div class="gantt-today" style="--x:63%"><span>今天</span></div>
+                </div>
+                <aside class="gantt-side">
+                  <div class="panel-title">项目进度</div>
+                  <div class="ring"><span>68<small>%</small></span></div>
+                  <div class="stat-line"><span>进行中</span><b>3</b></div>
+                  <div class="stat-line"><span>已逾期</span><b class="danger">1</b></div>
+                </aside>
+              </div>
+
+              <div class="scene scene-export" data-scene="4">
+                <div class="export-head">
+                  <div class="eyebrow">YOUR DATA, YOURS</div>
+                  <h3>所有内容，留在你的浏览器里。</h3>
+                  <p>没有账号，没有服务器，没有隐藏的上传。</p>
+                </div>
+                <div class="export-grid">
+                  <div class="export-card" style="--i:0"><b>WVM</b><span>完整工程</span></div>
+                  <div class="export-card" style="--i:1"><b>XMind</b><span>双向互通</span></div>
+                  <div class="export-card" style="--i:2"><b>SVG</b><span>矢量导出</span></div>
+                  <div class="export-card" style="--i:3"><b>PNG</b><span>高清图片</span></div>
+                  <div class="export-card" style="--i:4"><b>Markdown</b><span>结构化文本</span></div>
+                  <div class="export-card" style="--i:5"><b>PDF</b><span>打印排版</span></div>
+                </div>
+                <div class="storage-pill"><span class="shield">◎</span> IndexedDB + 本地备份 · 零上传</div>
+              </div>
+
+              <div class="scene-caption">
+                <span class="caption-index" id="captionIndex">01 / 05</span>
+                <strong id="captionTitle">导图 · 拖动整枝，自动排斥</strong>
+                <span id="captionSub">像整理桌面一样整理想法，节点永不重叠。</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tour-controls">
+        <button class="tour-play" id="tourPlay" aria-label="暂停演示">❚❚</button>
+        <div class="tour-dots" id="tourDots" aria-label="演示章节"></div>
+        <div class="tour-progress"><i id="tourProgress"></i></div>
+        <span class="tour-hint">自动播放</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="features" id="features">
+    <div class="section-head reveal">
+      <div class="eyebrow">CRAFTED FOR FOCUS</div>
+      <h2>该有的都有，不该有的都没有</h2>
+      <p>为长时间思考而设计：快、安静、不打断。</p>
+    </div>
+    <div class="feature-grid">
+      <article class="feature-card reveal">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24"><path d="M12 4v6M12 10L5 15M12 10l7 5" /><circle cx="12" cy="4" r="2"/><circle cx="5" cy="16" r="2"/><circle cx="19" cy="16" r="2"/></svg>
+        </div>
+        <h3>十种结构，一键切换</h3>
+        <p>思维导图、逻辑图、组织架构、树形、鱼骨、时间轴，方向与层级自动重排。</p>
+      </article>
+      <article class="feature-card reveal">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="4" rx="1"/><rect x="7" y="10" width="14" height="3" rx="1"/><rect x="7" y="15" width="11" height="3" rx="1"/></svg>
+        </div>
+        <h3>四视图同源</h3>
+        <p>导图、大纲、演说、甘特共享一份文档。切换视图不复制、不丢失。</p>
+      </article>
+      <article class="feature-card reveal">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24"><path d="M4 5h16v10H4z"/><path d="M9 19h6M12 15v4"/><path d="M8 9l2 2 4-4"/></svg>
+        </div>
+        <h3>16:9 演说模式</h3>
+        <p>导图直接生成演示稿，逐级展开、全屏放映，独立窗口不被打断。</p>
+      </article>
+      <article class="feature-card reveal">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="8" cy="6" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="11" cy="18" r="2"/></svg>
+        </div>
+        <h3>任务与排期</h3>
+        <p>待办、进度、优先级、起止日期与逾期提醒，在甘特视图中自然汇总。</p>
+      </article>
+      <article class="feature-card reveal">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>
+        </div>
+        <h3>本地优先</h3>
+        <p>IndexedDB 主存储与本地备份，自动保存，不上传任何内容。</p>
+      </article>
+      <article class="feature-card reveal">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24"><path d="M4 7h11M4 12h7M4 17h9"/><path d="M16 7h4v10h-4z"/><path d="M18 10v4"/></svg>
+        </div>
+        <h3>格式自由</h3>
+        <p>WVM、XMind、Markdown、OPML、SVG、PNG、PDF，随时带走你的内容。</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="local" id="local">
+    <div class="local-copy reveal">
+      <div class="eyebrow">PRIVACY BY DEFAULT</div>
+      <h2>你的想法，只属于你。</h2>
+      <p>没有登录、没有云端依赖、没有后台服务。打开即用，关闭即走，所有内容只保存在当前浏览器。</p>
+      <ul class="local-list">
+        <li>IndexedDB + localStorage 双保险</li>
+        <li>自动保存与恢复，Ctrl+S 手动确认</li>
+        <li>导出即备份，随时迁移到其它设备</li>
+      </ul>
+      <a class="ghost-btn" href="../index.html">体验本地优先</a>
+    </div>
+    <div class="local-visual reveal" aria-hidden="true">
+      <div class="privacy-ring ring-1"></div>
+      <div class="privacy-ring ring-2"></div>
+      <div class="privacy-ring ring-3"></div>
+      <div class="privacy-core">
+        <svg viewBox="0 0 64 64"><path d="M32 8l20 10v12c0 14-9 21-20 26-11-5-20-12-20-26V18z" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M23 32l6 6 12-13" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <b>100%</b><span>本地</span>
+      </div>
+      <div class="privacy-chip pc1">无账号</div>
+      <div class="privacy-chip pc2">无追踪</div>
+      <div class="privacy-chip pc3">无上传</div>
+    </div>
+  </section>
+
+  <section class="cta reveal">
+    <div class="cta-inner">
+      <div class="eyebrow">READY WHEN YOU ARE</div>
+      <h2>现在，把想法织成图。</h2>
+      <p>零依赖、离线可用。你的下一张导图，不需要等待加载。</p>
+      <div class="cta-actions">
+        <a class="primary-btn large" href="../index.html">打开应用</a>
+        <a class="ghost-btn large" href="https://github.com/iCxin/weavemind" target="_blank" rel="noopener">GitHub 仓库</a>
+      </div>
+      <div class="cta-meta">MIT License · 无需安装 · 打开即用</div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <span>织思 WeaveMind</span>
+  <span>Built with Trae · 离线优先</span>
+  <a href="https://github.com/iCxin/weavemind" target="_blank" rel="noopener">GitHub</a>
+</footer>
+
+<div class="cine-intro" id="cineIntro" aria-hidden="true">
+  <div class="cine-mark">
+    <svg viewBox="0 0 40 40">
+      <defs>
+        <linearGradient id="introGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#61b3e8"/><stop offset="1" stop-color="#2f6f9f"/>
+        </linearGradient>
+      </defs>
+      <rect x="2" y="2" width="36" height="36" rx="11" fill="url(#introGrad)"/>
+      <path d="M12 14c5 0 5 12 10 12s5-12 10-12M12 26c5 0 5-12 10-12s5 12 10 12" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/>
+    </svg>
+  </div>
+  <h1>织思 WeaveMind</h1>
+  <p>本地优先的思维导图工作台</p>
+</div>
+
+<script src="./demo.js"></script>
+</body>
+</html>

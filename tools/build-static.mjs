@@ -14,7 +14,7 @@ import { stripTypeScriptTypes } from 'node:module';
 const ROOT = resolve(process.cwd());
 const OUT = join(ROOT, 'dist');
 const SKIP = new Set(['node_modules', 'dist', '.git', '.github', '.trae', 'desktop', 'docs']);
-const COPY_ROOTS = ['apps', 'packages', 'assets'];
+const COPY_ROOTS = ['apps', 'packages', 'assets', 'demo'];
 
 async function walk(dir, out = []) {
   for (const entry of await readdir(dir, { withFileTypes: true })) {
