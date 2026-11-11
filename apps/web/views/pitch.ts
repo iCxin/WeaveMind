@@ -7,7 +7,7 @@
  * - 页码显示在幻灯片右下角，不再展示主题数等统计数据。
  */
 
-import type { Sheet, Topic, TopicId } from '../../../packages/core/src/types.ts';
+import type { Sheet, StructureKind, Topic, TopicId } from '../../../packages/core/src/types.ts';
 import { stripRich } from '../../../packages/core/src/rich.ts';
 import { layoutSheet } from '../../../packages/layout/src/layout.ts';
 import { createEstimateMeasurer } from '../../../packages/layout/src/measure.ts';
@@ -18,11 +18,12 @@ import type { ViewHost } from './host.ts';
 interface Slide {
   readonly title: string;
   readonly rootId: TopicId;
+  readonly structure: StructureKind;
   readonly note?: string;
 }
 
 /** 以某个主题为根，裁剪出仅包含其后代的画布，用于单页演示。 */
-function subtreeSheet(source: Sheet, rootId: TopicId): Sheet {
+function subtreeSheet(source: Sheet, rootId: TopicId, structure: StructureKind): Sheet {
   const ids = new Set<TopicId>();
   const walk = (id: TopicId): void => {
     if (ids.has(id)) return;
@@ -53,17 +54,27 @@ function subtreeSheet(source: Sheet, rootId: TopicId): Sheet {
     ...source,
     rootId,
     topics,
-    structure: 'mindmap',
+    structure,
     boundaries: [],
     relationships: [],
     zones: [],
     style: {
       ...source.style,
       background: '#ffffff',
-      darkCanvas: false,
-      edgeStyle: 'curve'
+      darkCanvas: false
     }
   };
+}
+
+/**
+ * 拆解页保持整图的方向：整图为思维导图时，右侧分支继续向右展开、左侧分支向左展开；
+ * 其它结构沿用原结构，仅鱼骨/时间轴收敛为对应水平方向。
+ */
+function branchStructure(base: StructureKind, left: boolean): StructureKind {
+  if (base === 'mindmap') return left ? 'logic-left' : 'logic-right';
+  if (base === 'fishbone-left') return 'logic-left';
+  if (base === 'fishbone-right' || base === 'timeline-right') return 'logic-right';
+  return base;
 }
 
 export class PitchView {
@@ -71,6 +82,8 @@ export class PitchView {
   private readonly el: HTMLElement;
   private readonly presentation: boolean;
   private index = 0;
+  private cachedSheet: Sheet | null = null;
+  private cachedSlides: Slide[] = [];
 
   constructor(el: HTMLElement, host: ViewHost, presentation = false) {
     this.el = el;
@@ -134,12 +147,29 @@ export class PitchView {
 
   private buildSlides(): Slide[] {
     const sheet: Sheet = this.host.sheet();
+    if (this.cachedSheet === sheet) return this.cachedSlides;
+
     const root = sheet.topics[sheet.rootId];
-    if (!root) return [];
+    if (!root) {
+      this.cachedSheet = sheet;
+      this.cachedSlides = [];
+      return this.cachedSlides;
+    }
+
+    const measure = createEstimateMeasurer();
+    const fullLayout = layoutSheet(sheet, new Set(), measure);
+    const rootBox = fullLayout.boxes.get(root.id);
+
+    const sideOf = (branchId: TopicId): boolean => {
+      const box = fullLayout.boxes.get(branchId);
+      if (!rootBox || !box) return false;
+      return box.x + box.w / 2 < rootBox.x + rootBox.w / 2;
+    };
 
     const cover: Slide = {
       title: stripRich(root.text),
       rootId: root.id,
+      structure: sheet.structure,
       note: root.note
     };
 
@@ -150,17 +180,20 @@ export class PitchView {
       .map<Slide>((branch) => ({
         title: stripRich(branch.text),
         rootId: branch.id,
+        structure: branchStructure(sheet.structure, sideOf(branch.id)),
         note: branch.note
       }));
 
-    return [cover, ...pages];
+    this.cachedSheet = sheet;
+    this.cachedSlides = [cover, ...pages];
+    return this.cachedSlides;
   }
 
   private renderMap(slide: Slide): string {
     const source = this.host.sheet();
-    const sheet = subtreeSheet(source, slide.rootId);
+    const sheet = subtreeSheet(source, slide.rootId, slide.structure);
     const measure = createEstimateMeasurer();
-    const layout = layoutSheet(sheet, new Set(), measure, 'mindmap');
+    const layout = layoutSheet(sheet, new Set(), measure);
     const svg = toSvg(sheet, layout, { dark: false, measure });
     return svg.replace('<svg ', '<svg preserveAspectRatio="xMidYMid meet" ');
   }

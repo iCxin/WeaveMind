@@ -1532,6 +1532,7 @@ body.present .present-bar .pbtn:hover {
 .bar > .group,
 .bar > .menu,
 .bar > .wselect,
+.bar > .lang-switch,
 .bar > .sep,
 .bar > #btn-replace,
 .bar > #btn-fit,
@@ -1686,18 +1687,51 @@ body.present .present-bar .pbtn:hover {
   font-weight: 700;
 }
 
-.wselect.filter-select { width: 104px; }
-.wselect.filter-select .wselect-trigger { width: 100%; }
+.wselect.filter-select { width: auto; min-width: 64px; }
+.wselect.filter-select .wselect-trigger {
+  width: auto;
+  padding: 0 7px;
+}
+
+/* 语言切换：中 / EN 分段按钮 */
+.lang-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 30px;
+  padding: 2px;
+  background: var(--surface-2);
+  border: 1px solid var(--line-strong);
+  border-radius: 7px;
+}
+
+.lang-switch button {
+  height: 24px;
+  min-width: 28px;
+  padding: 0 7px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-500);
+  background: transparent;
+  border: none;
+  border-radius: 5px;
+}
+
+.lang-switch button:hover {
+  color: var(--brand-600);
+  background: transparent;
+}
+
+.lang-switch button.on {
+  color: var(--brand-600);
+  background: #fff;
+  box-shadow: var(--shadow-1);
+}
 
 .wselect.active .wselect-trigger {
   color: var(--brand-600);
   border-color: rgba(47, 111, 159, .45);
   background: var(--brand-50);
-}
-
-.wselect.locale-select-wrap .wselect-trigger {
-  height: 28px;
-  max-width: 132px;
 }
 
 /* 结构选择器与自定义下拉保持同一视觉语言 */

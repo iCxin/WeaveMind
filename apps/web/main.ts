@@ -134,7 +134,8 @@ const viewPitch = must('view-pitch');
 const viewGantt = must('view-gantt');
 const exportList = must('exportList');
 const autosaveEl = must('autosaveState');
-const localeSelect = must<HTMLSelectElement>('locale');
+const langSwitch = must('langSwitch');
+const langButtons = Array.from(langSwitch.querySelectorAll<HTMLButtonElement>('[data-locale]'));
 const panelButton = must('btn-panel');
 const panelBackdrop = must('panelBackdrop');
 const moreButton = must('btn-more');
@@ -579,12 +580,20 @@ function setupCustomSelects(): void {
   enhanceSelect(must<HTMLSelectElement>('topic-shape'), { className: 'panel-select' });
   enhanceSelect(must<HTMLSelectElement>('task-priority'), { className: 'panel-select' });
   enhanceSelect(must<HTMLSelectElement>('edge-style'), { className: 'panel-select' });
-  enhanceSelect(localeSelect, { className: 'locale-select-wrap' });
+}
+
+function syncLangSwitch(): void {
+  const current = getLocale();
+  for (const button of langButtons) {
+    const on = button.dataset.locale === current;
+    button.classList.toggle('on', on);
+    button.setAttribute('aria-pressed', String(on));
+  }
 }
 
 function applyLocale(next: Locale): void {
-  localeSelect.value = next;
   setLocale(next);
+  syncLangSwitch();
   localizeStatic();
   refreshAllSelects();
   refresh();
@@ -593,12 +602,14 @@ function applyLocale(next: Locale): void {
 }
 
 function setupLocale(): void {
-  localeSelect.value = getLocale();
-  refreshSelect(localeSelect);
+  syncLangSwitch();
   if (document.documentElement) document.documentElement.lang = getLocale();
-  localeSelect.addEventListener('change', () => {
-    applyLocale(localeSelect.value as Locale);
-  });
+  for (const button of langButtons) {
+    button.addEventListener('click', () => {
+      const next = button.dataset.locale as Locale | undefined;
+      if (next) applyLocale(next);
+    });
+  }
 }
 
 function setPanelOpen(open: boolean): void {
@@ -639,15 +650,11 @@ function filterSelectWrap(): HTMLElement | null {
   return document.querySelector<HTMLElement>('.wselect.filter-select');
 }
 
-function localeSelectWrap(): HTMLElement | null {
-  return document.querySelector<HTMLElement>('.wselect.locale-select-wrap');
-}
-
 function overflowPriority(el: HTMLElement): number {
   if (el.id === 'btn-zen') return 100;
   if (el.id === 'btn-fit') return 96;
   if (el.id === 'btn-replace') return 92;
-  if (el === localeSelectWrap()) return 88;
+  if (el === langSwitch) return 88;
   if (el === structureMenu) return 84;
   if (el === must('exportMenu')) return 80;
   if (el === filterSelectWrap()) return 76;
@@ -668,7 +675,7 @@ function toolbarCandidates(): HTMLElement[] {
     structureMenu,
     must('btn-fit'),
     must('btn-zen'),
-    localeSelectWrap(),
+    langSwitch,
     document.getElementById('viewTabs')
   ]) {
     if (el instanceof HTMLElement) out.push(el);
@@ -789,16 +796,19 @@ function showOverflowMenu(): void {
       });
       continue;
     }
-    if (el === localeSelectWrap()) {
+    if (el === langSwitch) {
       addSeparator();
       items.push({ header: '语言 / Language' });
-      for (const option of Array.from(localeSelect.options)) {
-        items.push({
-          label: option.textContent?.trim() ?? '',
-          checked: localeSelect.value === option.value,
-          action: () => applyLocale(option.value as Locale)
-        });
-      }
+      items.push({
+        label: '中文',
+        checked: getLocale() === 'zh-CN',
+        action: () => applyLocale('zh-CN')
+      });
+      items.push({
+        label: 'English',
+        checked: getLocale() === 'en',
+        action: () => applyLocale('en')
+      });
       continue;
     }
     if (el.classList.contains('group')) {
