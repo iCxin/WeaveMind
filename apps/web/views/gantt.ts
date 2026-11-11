@@ -6,6 +6,7 @@
 import { derivedProgress, isOverdue, tasksOf } from '../../../packages/core/src/query.ts';
 import { stripRich } from '../../../packages/core/src/rich.ts';
 import type { Task } from '../../../packages/core/src/types.ts';
+import { t } from '../i18n.ts';
 import type { ViewHost } from './host.ts';
 
 const DAY = 86400000;
@@ -41,8 +42,8 @@ export class GanttView {
     if (tasks.length === 0) {
       this.el.innerHTML =
         '<div class="empty gantt-empty">' +
-        '<div class="empty-title">还没有任务</div>' +
-        '<div class="empty-sub">选中主题后，在右侧「任务」中开启并设置日期，即可在此排期</div>' +
+        `<div class="empty-title">${t('还没有任务')}</div>` +
+        `<div class="empty-sub">${t('选中主题后，在右侧「任务」中开启并设置日期，即可在此排期')}</div>` +
         '</div>';
       return;
     }
@@ -84,7 +85,7 @@ export class GanttView {
         return (
           `<div class="grow-item${selected}${hit ? ' hit' : ''}" data-id="${id}">` +
           `<div class="gname"><span class="gdot"></span>${escapeHtml(stripRich(topic.text))}` +
-          `${overdue ? '<i class="gover">逾期</i>' : ''}` +
+          `${overdue ? `<i class="gover">${t('逾期')}</i>` : ''}` +
           `<span class="gpct">${progress}%</span></div>` +
           `<div class="gtrack">` +
           `<div class="gbar${overdue ? ' over' : ''}" ` +
@@ -99,7 +100,7 @@ export class GanttView {
 
     this.el.innerHTML =
       `<div class="gantt">` +
-      `<div class="gantt-head"><div class="gname">任务</div><div class="gtrack gaxis">${headerTicks.join('')}</div></div>` +
+      `<div class="gantt-head"><div class="gname">${t('任务')}</div><div class="gtrack gaxis">${headerTicks.join('')}</div></div>` +
       rows +
       `</div>`;
 

@@ -6,6 +6,7 @@
 import { flatten } from '../../../packages/core/src/query.ts';
 import { stripRich } from '../../../packages/core/src/rich.ts';
 import type { Topic } from '../../../packages/core/src/types.ts';
+import { t } from '../i18n.ts';
 import type { ViewHost } from './host.ts';
 
 const MARKER_GLYPH: Record<string, string> = {
@@ -118,7 +119,7 @@ export class OutlineView {
         const todo = document.createElement('button');
         todo.className = `otodo${row.topic.todo ? ' done' : ''}`;
         todo.textContent = row.topic.todo ? '✓' : '';
-        todo.title = row.topic.todo ? '标记为未完成' : '标记为已完成';
+        todo.title = row.topic.todo ? t('标记为未完成') : t('标记为已完成');
         todo.addEventListener('pointerdown', (event) => event.stopPropagation());
         todo.addEventListener('click', (event) => {
           event.stopPropagation();
@@ -159,7 +160,7 @@ export class OutlineView {
     if (rows.length === 0) {
       const empty = document.createElement('div');
       empty.className = 'empty';
-      empty.textContent = '当前画布没有主题';
+      empty.textContent = t('当前画布没有主题');
       this.el.appendChild(empty);
     }
   }

@@ -3,6 +3,8 @@
  * 支持遮罩、焦点陷阱、Esc 取消、Enter 确认与输入框。
  */
 
+import { t } from '../i18n.ts';
+
 export type DialogActionKind = 'primary' | 'danger' | 'ghost';
 
 export interface DialogAction {
@@ -51,17 +53,17 @@ export function showDialog(options: DialogOptions): Promise<DialogResult | null>
     card.className = 'dialog';
     card.setAttribute('role', 'dialog');
     card.setAttribute('aria-modal', 'true');
-    card.setAttribute('aria-label', options.title);
+    card.setAttribute('aria-label', t(options.title));
 
     const title = document.createElement('h2');
     title.className = 'dialog-title';
-    title.textContent = options.title;
+    title.textContent = t(options.title);
     card.appendChild(title);
 
     if (options.message) {
       const message = document.createElement('p');
       message.className = 'dialog-message';
-      message.textContent = options.message;
+      message.textContent = t(options.message);
       card.appendChild(message);
     }
 
@@ -70,14 +72,14 @@ export function showDialog(options: DialogOptions): Promise<DialogResult | null>
       if (options.input.label) {
         const label = document.createElement('label');
         label.className = 'dialog-label';
-        label.textContent = options.input.label;
+        label.textContent = t(options.input.label);
         card.appendChild(label);
       }
       input = document.createElement('input');
       input.className = 'dialog-input';
       input.type = 'text';
       input.value = options.input.value ?? '';
-      if (options.input.placeholder) input.placeholder = options.input.placeholder;
+      if (options.input.placeholder) input.placeholder = t(options.input.placeholder);
       card.appendChild(input);
     }
 
@@ -97,7 +99,7 @@ export function showDialog(options: DialogOptions): Promise<DialogResult | null>
     const buttons = options.actions.map((action) => {
       const button = document.createElement('button');
       button.className = `dbtn${action.kind ? ' ' + action.kind : ''}`;
-      button.textContent = action.label;
+      button.textContent = t(action.label);
       button.addEventListener('click', () => finish(action.value));
       actions.appendChild(button);
       return { button, action };

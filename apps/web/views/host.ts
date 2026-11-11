@@ -11,4 +11,5 @@ export interface ViewHost {
   addSibling(id: TopicId): TopicId | null;
   toggleTodo(id: TopicId): void;
   toast(message: string, kind?: 'info' | 'error'): void;
+  exitView?(): void;
 }

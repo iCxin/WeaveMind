@@ -89,6 +89,7 @@ import {
   saveBrowserDocument,
   type BrowserDocument
 } from './storage.ts';
+import { getLocale, localizeStatic, setLocale, t, type Locale } from './i18n.ts';
 import { layoutSheet } from '../../packages/layout/src/layout.ts';
 import { createEstimateMeasurer } from '../../packages/layout/src/measure.ts';
 
@@ -125,6 +126,19 @@ const viewPitch = must('view-pitch');
 const viewGantt = must('view-gantt');
 const exportList = must('exportList');
 const autosaveEl = must('autosaveState');
+const localeSelect = must<HTMLSelectElement>('locale');
+const panelButton = must('btn-panel');
+const panelBackdrop = must('panelBackdrop');
+
+const pageSearch = (() => {
+  try {
+    return window.location?.search ?? '';
+  } catch {
+    return '';
+  }
+})();
+const isPresentation = new URLSearchParams(pageSearch).has('present');
+if (isPresentation) document.body.classList.add('present');
 
 const STRUCTURE_SHORT: Record<StructureKind, string> = {
   mindmap: '思维导图',
@@ -300,7 +314,7 @@ function viewTransform() {
 let toastTimer: number | undefined;
 
 function toast(message: string, kind: 'info' | 'error' = 'info'): void {
-  toastEl.textContent = message;
+  toastEl.textContent = t(message);
   toastEl.className = `toast show${kind === 'error' ? ' error' : ''}`;
   window.clearTimeout(toastTimer);
   toastTimer = window.setTimeout(() => {
@@ -325,11 +339,12 @@ const host: ViewHost = {
   toggleTodo: (id) => {
     store.commit('切换待办', (doc) => updateSheet(doc, toggleTodo(getSheet(doc), id)));
   },
+  exitView: () => setMode('map'),
   toast
 };
 
 const outline = new OutlineView(viewOutline, host);
-const pitch = new PitchView(viewPitch, host);
+const pitch = new PitchView(viewPitch, host, isPresentation);
 const gantt = new GanttView(viewGantt, host);
 
 /* ------------------------------------------------------------------ */
@@ -431,11 +446,15 @@ function syncToolbar(matchCount: number): void {
   const redo = document.getElementById('btn-redo') as HTMLButtonElement | null;
   if (undo) {
     undo.disabled = !store.canUndo;
-    undo.title = store.canUndo ? `撤销：${store.undoLabel}（Ctrl+Z）` : '撤销（Ctrl+Z）';
+    undo.title = store.canUndo
+      ? t('撤销：{label}（Ctrl+Z）', { label: store.undoLabel ?? '' })
+      : t('撤销（Ctrl+Z）');
   }
   if (redo) {
     redo.disabled = !store.canRedo;
-    redo.title = store.canRedo ? `重做：${store.redoLabel}（Ctrl+Shift+Z）` : '重做（Ctrl+Shift+Z）';
+    redo.title = store.canRedo
+      ? t('重做：{label}（Ctrl+Shift+Z）', { label: store.redoLabel ?? '' })
+      : t('重做（Ctrl+Shift+Z）');
   }
   const zoomLabel = document.getElementById('zoomLabel');
   if (zoomLabel) zoomLabel.textContent = `${Math.round(store.view.zoom * 100)}%`;
@@ -445,18 +464,21 @@ function syncToolbar(matchCount: number): void {
   if (searchInput.value !== store.view.query) searchInput.value = store.view.query;
   if (filterSelect.value !== store.view.filter) filterSelect.value = store.view.filter;
   filterSelect.title = store.view.filter === 'all'
-    ? '筛选主题'
-    : `筛选：${lastFilterCount} 个主题`;
+    ? t('筛选主题')
+    : t('筛选：{n} 个主题', { n: lastFilterCount });
 }
 
 function syncStructurePicker(): void {
   const current = STRUCTURE_OPTIONS.find((option) => option.id === store.sheet.structure)
     ?? STRUCTURE_OPTIONS[0]!;
-  structureLabel.textContent = current.short;
+  structureLabel.textContent = t(current.short);
   structureGlyph.innerHTML = structureIcon(current.id);
-  structureButton.title = `结构：${current.label}`;
+  structureButton.title = t('结构：{name}', { name: t(current.label) });
   structureButton.setAttribute('aria-expanded', String(!structureList.hidden));
   structureList.querySelectorAll<HTMLButtonElement>('[data-structure]').forEach((button) => {
+    const option = STRUCTURE_OPTIONS.find((item) => item.id === button.dataset.structure);
+    const name = button.querySelector('.structure-name');
+    if (option && name) name.textContent = t(option.label);
     const active = button.dataset.structure === current.id;
     button.classList.toggle('on', active);
     button.setAttribute('aria-checked', String(active));
@@ -474,7 +496,7 @@ function setupStructurePicker(): void {
     button.setAttribute('aria-checked', 'false');
     button.innerHTML =
       `<span class="structure-icon">${structureIcon(option.id)}</span>` +
-      `<span class="structure-name">${option.label}</span>`;
+      `<span class="structure-name">${t(option.label)}</span>`;
     button.addEventListener('click', () => {
       structureList.hidden = true;
       structureButton.setAttribute('aria-expanded', 'false');
@@ -501,6 +523,45 @@ function setupStructurePicker(): void {
   });
 }
 
+function setupLocale(): void {
+  localeSelect.value = getLocale();
+  if (document.documentElement) document.documentElement.lang = getLocale();
+  localeSelect.addEventListener('change', () => {
+    setLocale(localeSelect.value as Locale);
+    localizeStatic();
+    refresh();
+    toast('语言已切换');
+  });
+}
+
+function setPanelOpen(open: boolean): void {
+  const app = document.querySelector('.app');
+  if (!app) return;
+  app.classList.toggle('panel-open', open);
+  panelButton.setAttribute('aria-expanded', String(open));
+  panelBackdrop.hidden = !open;
+}
+
+function setupPanelDrawer(): void {
+  panelButton.addEventListener('click', () => {
+    const app = document.querySelector('.app');
+    setPanelOpen(!app?.classList.contains('panel-open'));
+  });
+  panelBackdrop.addEventListener('click', () => setPanelOpen(false));
+  const wide = window.matchMedia?.('(min-width: 981px)');
+  wide?.addEventListener?.('change', (event) => {
+    if (event.matches) setPanelOpen(false);
+  });
+}
+
+function setupPresentation(): void {
+  if (!isPresentation) return;
+  document.body.classList.add('present');
+  store.setView({ mode: 'pitch' });
+  pitch.reset();
+  document.addEventListener('fullscreenchange', () => pitch.syncFullscreen());
+}
+
 function primarySelection(): TopicId | null {
   const ids = [...store.view.selection];
   return ids.length ? ids[ids.length - 1] ?? null : null;
@@ -522,19 +583,19 @@ function syncStatus(): void {
   if (metaTasks) metaTasks.textContent = String(stats.tasks);
   if (metaSelection) {
     metaSelection.textContent = selected.length === 0
-      ? '无'
+      ? t('无')
       : selected.length === 1
         ? sheet.topics[selected[0]!]?.text ?? '—'
-        : `${selected.length} 个`;
+        : t('{n} 个', { n: selected.length });
   }
-  if (metaState) metaState.textContent = store.dirty ? '未保存' : '已保存';
+  if (metaState) metaState.textContent = store.dirty ? t('未保存') : t('已保存');
   if (statusLeft) {
-    const modeLabel = { map: '导图', outline: '大纲', pitch: '演说', gantt: '甘特' }[store.view.mode];
+    const modeKey = { map: '导图', outline: '大纲', pitch: '演说', gantt: '甘特' }[store.view.mode];
     statusLeft.textContent =
-      `${sheet.title} · ${modeLabel} · ${stats.topics} 个主题` +
-      (store.view.collapsed.size ? ` · 折叠 ${store.view.collapsed.size}` : '') +
-      (store.view.query ? ` · 匹配 ${searchTopics(sheet, store.view.query).length}` : '') +
-      (store.view.filter !== 'all' ? ` · 筛选 ${lastFilterCount}` : '');
+      `${sheet.title} · ${t(modeKey)} · ${t('{n} 个主题', { n: stats.topics })}` +
+      (store.view.collapsed.size ? ` · ${t('折叠 {n}', { n: store.view.collapsed.size })}` : '') +
+      (store.view.query ? ` · ${t('匹配 {n}', { n: searchTopics(sheet, store.view.query).length })}` : '') +
+      (store.view.filter !== 'all' ? ` · ${t('筛选 {n}', { n: lastFilterCount })}` : '');
   }
 }
 
@@ -575,12 +636,12 @@ function syncPanel(): void {
   for (const boundary of store.sheet.boundaries) {
     const chip = document.createElement('span');
     chip.className = 'label-chip deco-chip clickable';
-    chip.textContent = `外框：${boundary.title}`;
-    chip.title = '点击编辑外框标题';
+    chip.textContent = t('外框：{name}', { name: boundary.title });
+    chip.title = t('点击编辑外框标题');
     chip.addEventListener('click', () => beginBoundaryEdit(boundary.id));
     const remove = document.createElement('button');
     remove.textContent = '×';
-    remove.title = '删除外框';
+    remove.title = t('删除外框');
     remove.addEventListener('click', (event) => {
       event.stopPropagation();
       store.commit('删除外框', (doc) =>
@@ -598,7 +659,7 @@ function syncPanel(): void {
     chip.textContent = zone.title;
     const remove = document.createElement('button');
     remove.textContent = '×';
-    remove.title = '删除专区';
+    remove.title = t('删除专区');
     remove.addEventListener('click', () => {
       store.commit('删除专区', (doc) => updateSheet(doc, removeZone(getSheet(doc), zone.id)));
     });
@@ -667,7 +728,7 @@ function syncPanel(): void {
     chip.textContent = label;
     const remove = document.createElement('button');
     remove.textContent = '×';
-    remove.title = `移除标签 ${label}`;
+    remove.title = t('移除标签 {label}', { label });
     remove.addEventListener('click', () => {
       store.commit('移除标签', (doc) => updateSheet(doc, removeLabel(getSheet(doc), topic.id, label)));
     });
@@ -696,10 +757,10 @@ function syncPanel(): void {
   }
 
   const media: string[] = [];
-  if (topic.image) media.push('图片');
-  if (topic.equation) media.push(`公式 ${topic.equation.latex}`);
-  if (topic.attachments?.length) media.push(`附件 ${topic.attachments.length}`);
-  if (topic.audio?.length) media.push(`语音 ${topic.audio.length}`);
+  if (topic.image) media.push(t('图片'));
+  if (topic.equation) media.push(`${t('公式')} ${topic.equation.latex}`);
+  if (topic.attachments?.length) media.push(`${t('附件')} ${topic.attachments.length}`);
+  if (topic.audio?.length) media.push(`${t('语音')} ${topic.audio.length}`);
   mediaInfo.textContent = media.length ? media.join(' · ') : '—';
 }
 
@@ -724,7 +785,7 @@ function syncSheetBar(): void {
       const input = document.createElement('input');
       input.className = 'sheet-input';
       input.value = sheet.title;
-      input.setAttribute('aria-label', '画布名称');
+      input.setAttribute('aria-label', t('画布名称'));
       input.style.width = `${Math.min(240, Math.max(96, renderer.measure.width(sheet.title, 12, 600) + 30))}px`;
       input.addEventListener('input', () => {
         input.style.width = `${Math.min(240, Math.max(96, renderer.measure.width(input.value || ' ', 12, 600) + 30))}px`;
@@ -753,14 +814,14 @@ function syncSheetBar(): void {
     const tab = document.createElement('button');
     tab.className = `sheet-tab${sheetId === store.doc.activeSheetId ? ' on' : ''}`;
     tab.textContent = sheet.title;
-    tab.title = `${sheet.title}（双击重命名）`;
+    tab.title = t('{title}（双击重命名）', { title: sheet.title });
     tab.addEventListener('click', () => switchSheet(sheetId));
     tab.addEventListener('dblclick', () => beginSheetRename(sheetId));
     if (store.doc.sheetOrder.length > 1) {
       const close = document.createElement('button');
       close.className = 'x';
       close.textContent = '×';
-      close.title = '删除该画布';
+      close.title = t('删除该画布');
       close.addEventListener('click', (event) => {
         event.stopPropagation();
         deleteSheet(sheetId);
@@ -1202,7 +1263,7 @@ async function saveFile(): Promise<void> {
   flushInlineEditors();
   const snapshot = store.doc;
   const view = persistedView();
-  setAutosaveState('正在保存…');
+  setAutosaveState(t('正在保存…'));
   try {
     const target = await saveBrowserDocument({
       fileName: store.fileName,
@@ -1213,18 +1274,20 @@ async function saveFile(): Promise<void> {
     if (store.doc === snapshot) {
       store.markSaved(store.fileName);
       clearAutosave();
-      const time = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+      const time = new Date().toLocaleTimeString(getLocale(), { hour12: false });
       setAutosaveState(
-        target === 'indexeddb' ? `已保存到浏览器 ${time}` : `已保存到浏览器（兼容模式） ${time}`
+        target === 'indexeddb'
+          ? t('已保存到浏览器 {time}', { time })
+          : t('已保存到浏览器（兼容模式） {time}', { time })
       );
       toast('已保存到浏览器');
     } else {
-      setAutosaveState('已保存快照，有新修改', 'warn');
+      setAutosaveState(t('已保存快照，有新修改'), 'warn');
       toast('已保存到浏览器（保存期间有新修改）');
     }
   } catch (error) {
-    setAutosaveState('保存失败', 'warn');
-    toast(`保存失败：${(error as Error).message}`, 'error');
+    setAutosaveState(t('保存失败'), 'warn');
+    toast(t('保存失败：{error}', { error: (error as Error).message }), 'error');
   }
 }
 
@@ -1233,11 +1296,11 @@ async function openFromFile(file: File): Promise<void> {
     const result = await importFile(file);
     store.replace(result.doc, { collapsed: new Set(result.collapsed) }, file.name);
     clearAutosave();
-    setAutosaveState('自动保存已开启');
+    setAutosaveState(t('自动保存已开启'));
     requestAnimationFrame(() => fitToContent());
-    toast(`已导入 ${file.name}（${result.format}）`);
+    toast(t('已导入 {name}（{format}）', { name: file.name, format: result.format }));
   } catch (error) {
-    toast(`打开失败：${(error as Error).message}`, 'error');
+    toast(t('打开失败：{error}', { error: (error as Error).message }), 'error');
   }
 }
 
@@ -1249,7 +1312,7 @@ async function newFile(): Promise<void> {
   await clearBrowserDocument();
   store.replace(createWorkbook('未命名导图'));
   clearAutosave();
-  setAutosaveState('自动保存已开启');
+  setAutosaveState(t('自动保存已开启'));
   requestAnimationFrame(() => fitToContent());
   toast('已新建空白文档');
 }
@@ -1296,7 +1359,7 @@ async function exportAs(kind: string): Promise<void> {
       printSvg(svgOfCurrent(), base);
     }
   } catch (error) {
-    toast(`导出失败：${(error as Error).message}`, 'error');
+    toast(t('导出失败：{error}', { error: (error as Error).message }), 'error');
   }
 }
 
@@ -1774,7 +1837,7 @@ function copySelection(): void {
   if (clip.roots.length === 0) return;
   topicClip = clip;
   writeSystemClipboard(clipToText(clip));
-  toast(`已复制 ${clip.roots.length} 个主题`);
+  toast(t('已复制 {n} 个主题', { n: clip.roots.length }));
 }
 
 function cutSelection(): void {
@@ -1791,7 +1854,7 @@ function cutSelection(): void {
     return updateSheet(doc, sheet);
   });
   store.setSelection([]);
-  toast(`已剪切 ${roots.length} 个主题`);
+  toast(t('已剪切 {n} 个主题', { n: roots.length }));
 }
 
 function pasteClipboard(): void {
@@ -1809,7 +1872,7 @@ function pasteClipboard(): void {
   });
   if (created.length > 0) {
     store.setSelection(created);
-    toast(`已粘贴 ${created.length} 个主题`);
+    toast(t('已粘贴 {n} 个主题', { n: created.length }));
   }
 }
 
@@ -1837,7 +1900,7 @@ function duplicateSelection(): void {
   });
   if (created.length > 0) {
     store.setSelection(created);
-    toast(`已创建 ${created.length} 个副本`);
+    toast(t('已创建 {n} 个副本', { n: created.length }));
   }
 }
 
@@ -1867,7 +1930,7 @@ function uniformHeights(): void {
     for (const id of ids) sheet = setTopicHeight(sheet, id, max);
     return updateSheet(doc, sheet);
   });
-  toast(`已将 ${ids.length} 个主题统一为 ${Math.round(max)} px`);
+  toast(t('已将 {n} 个主题统一为 {size} px', { n: ids.length, size: Math.round(max) }));
 }
 
 function resetHeights(): void {
@@ -1978,6 +2041,30 @@ function isTypingTarget(target: EventTarget | null): boolean {
 
 window.addEventListener('keydown', (event) => {
   if (event.isComposing) return;
+  if (isPresentation) {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      if (document.fullscreenElement) void document.exitFullscreen();
+      else window.close();
+      return;
+    }
+    if (event.key.toLowerCase() === 'f') {
+      event.preventDefault();
+      pitch.toggleFullscreen();
+      return;
+    }
+    if (event.key === 'ArrowRight' || event.key === ' ' || event.key === 'PageDown') {
+      event.preventDefault();
+      pitch.next();
+      return;
+    }
+    if (event.key === 'ArrowLeft' || event.key === 'PageUp') {
+      event.preventDefault();
+      pitch.prev();
+      return;
+    }
+    return;
+  }
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
     event.preventDefault();
     void saveFile();
@@ -2037,6 +2124,10 @@ window.addEventListener('keydown', (event) => {
     return;
   }
   if (key === 'Escape') {
+    if (document.querySelector('.app')?.classList.contains('panel-open')) {
+      setPanelOpen(false);
+      return;
+    }
     if (!structureList.hidden) {
       structureList.hidden = true;
       structureButton.setAttribute('aria-expanded', 'false');
@@ -2129,7 +2220,7 @@ filterSelect.addEventListener('change', () => {
 must('btn-replace').addEventListener('click', () => {
   void promptDialog('查找替换', '查找内容', searchInput.value, '要查找的文字').then((find) => {
     if (!find) return;
-    void promptDialog('查找替换', `将「${find}」替换为`, '', '留空表示删除').then((value) => {
+    void promptDialog('查找替换', t('将「{text}」替换为', { text: find }), '', '留空表示删除').then((value) => {
       if (value === null) return;
       let count = 0;
       store.commit('查找替换', (doc) => {
@@ -2137,7 +2228,9 @@ must('btn-replace').addEventListener('click', () => {
         count = result.count;
         return updateSheet(doc, result.sheet);
       });
-      toast(count > 0 ? `已替换 ${count} 个主题` : '没有找到匹配内容', count > 0 ? 'info' : 'error');
+      toast(count > 0
+        ? t('已替换 {n} 个主题', { n: count })
+        : '没有找到匹配内容', count > 0 ? 'info' : 'error');
     });
   });
 });
@@ -2534,7 +2627,7 @@ attachInput.addEventListener('change', () => {
         dataUrl
       }))
     );
-    toast(`已附加 ${file.name}`);
+    toast(t('已附加 {name}', { name: file.name }));
   })();
 });
 
@@ -2683,9 +2776,13 @@ must('btn-bench').addEventListener('click', () => {
   });
   const t3 = performance.now();
 
-  const text = `布局 ${(t1 - t0).toFixed(1)} ms · 渲染 ${(t3 - t2).toFixed(1)} ms · ${layout.boxes.size} 节点`;
+  const text = t('布局 {layout} ms · 渲染 {render} ms · {n} 节点', {
+    layout: (t1 - t0).toFixed(1),
+    render: (t3 - t2).toFixed(1),
+    n: layout.boxes.size
+  });
   must('benchResult').textContent = text;
-  toast(`性能自检：${text}`);
+  toast(t('性能自检：{text}', { text }));
 });
 
 /* ------------------------------------------------------------------ */
@@ -2711,16 +2808,16 @@ function persistAutosave(): boolean {
     const payload = { doc: store.doc, view: persistedView(), at: Date.now() };
     const text = JSON.stringify(payload);
     if (text.length >= 3_000_000) {
-      setAutosaveState('文档过大，自动保存已跳过', 'warn');
+      setAutosaveState(t('文档过大，自动保存已跳过'), 'warn');
       return false;
     }
     localStorage.setItem(AUTOSAVE_KEY, text);
     lastAutosaveAt = Date.now();
-    const time = new Date(lastAutosaveAt).toLocaleTimeString('zh-CN', { hour12: false });
-    setAutosaveState(`已自动保存 ${time}`);
+    const time = new Date(lastAutosaveAt).toLocaleTimeString(getLocale(), { hour12: false });
+    setAutosaveState(t('已自动保存 {time}', { time }));
     return true;
   } catch {
-    setAutosaveState('自动保存不可用', 'warn');
+    setAutosaveState(t('自动保存不可用'), 'warn');
     return false;
   }
 }
@@ -2748,7 +2845,11 @@ function maybeRestoreAutosave(newerThan = 0): void {
       return;
     }
     const time = new Date(parsed.at ?? Date.now()).toLocaleString();
-    void confirmDialog('恢复自动快照', `检测到 ${time} 的自动快照，是否恢复？`, '恢复').then((ok) => {
+    void confirmDialog(
+      t('恢复自动快照'),
+      t('检测到 {time} 的自动快照，是否恢复？', { time }),
+      t('恢复')
+    ).then((ok) => {
       if (ok) {
         store.replace(parsed.doc!, {
           collapsed: new Set(parsed.view?.collapsed ?? []),
@@ -2758,7 +2859,7 @@ function maybeRestoreAutosave(newerThan = 0): void {
         });
         requestAnimationFrame(() => fitToContent());
         lastAutosaveAt = parsed.at ?? Date.now();
-        setAutosaveState('已恢复自动快照');
+        setAutosaveState(t('已恢复自动快照'));
         toast('已恢复自动快照');
       } else {
         try { localStorage.removeItem(AUTOSAVE_KEY); } catch { /* ignore */ }
@@ -2769,7 +2870,7 @@ function maybeRestoreAutosave(newerThan = 0): void {
   }
 }
 
-async function restoreBrowserDocument(): Promise<void> {
+async function restoreBrowserDocument(quiet = false): Promise<void> {
   let saved: BrowserDocument | null = null;
   try {
     saved = await loadBrowserDocument();
@@ -2777,12 +2878,12 @@ async function restoreBrowserDocument(): Promise<void> {
     saved = null;
   }
   if (!saved) {
-    maybeRestoreAutosave();
+    if (!quiet) maybeRestoreAutosave();
     return;
   }
   const savedDoc = saved.doc;
   if (!savedDoc?.sheets || !savedDoc.sheets[savedDoc.activeSheetId]) {
-    maybeRestoreAutosave();
+    if (!quiet) maybeRestoreAutosave();
     return;
   }
   store.replace(savedDoc, {
@@ -2793,7 +2894,8 @@ async function restoreBrowserDocument(): Promise<void> {
   }, saved.fileName);
   requestAnimationFrame(() => fitToContent());
   lastAutosaveAt = saved.savedAt ?? 0;
-  setAutosaveState('已从浏览器恢复');
+  setAutosaveState(t('已从浏览器恢复'));
+  if (quiet) return;
   toast('已恢复浏览器中保存的文档');
   maybeRestoreAutosave(saved.savedAt ?? 0);
 }
@@ -2828,6 +2930,9 @@ setInterval(() => {
   if (store.dirty && Date.now() - lastAutosaveAt >= 5000) persistAutosave();
 }, 5000);
 
+localizeStatic();
+setupLocale();
+setupPanelDrawer();
 setupStructurePicker();
 
 const initialRect = stage.getBoundingClientRect();
@@ -2846,7 +2951,7 @@ window.addEventListener('beforeunload', (event) => {
   event.returnValue = '';
 });
 
-setAutosaveState('自动保存已开启');
+setAutosaveState(t('自动保存已开启'));
 setTimeout(() => hint.classList.add('fade'), 7000);
 
 let freshStart = false;
@@ -2855,7 +2960,9 @@ try {
 } catch {
   freshStart = false;
 }
-if (freshStart) {
+if (isPresentation) {
+  void restoreBrowserDocument(true).then(() => setupPresentation());
+} else if (freshStart) {
   try { localStorage.removeItem(AUTOSAVE_KEY); } catch { /* ignore */ }
   void clearBrowserDocument();
 } else {

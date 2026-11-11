@@ -1,5 +1,7 @@
 /** 自定义右键菜单：定位、边界收敛、点击外部/Esc 关闭。 */
 
+import { t } from '../i18n.ts';
+
 export interface MenuItem {
   readonly label: string;
   readonly action: () => void;
@@ -32,7 +34,7 @@ export function showContextMenu(x: number, y: number, items: readonly MenuEntry[
     const button = document.createElement('button');
     button.className = `ctxitem${item.danger ? ' danger' : ''}`;
     button.setAttribute('role', 'menuitem');
-    button.textContent = item.label;
+    button.textContent = t(item.label);
     button.addEventListener('click', () => {
       dismissContextMenu();
       item.action();
