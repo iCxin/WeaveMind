@@ -73,6 +73,21 @@ export function renameSheet(doc: Workbook, id: string, title: string): Workbook 
   return touch(doc, { sheets: { ...doc.sheets, [id]: { ...sheet, title: value } } });
 }
 
+export function setSheetTitleColor(
+  doc: Workbook,
+  id: string,
+  color: string | null
+): Workbook {
+  const sheet = doc.sheets[id];
+  if (!sheet) throw new Error(`sheet not found: ${id}`);
+  return touch(doc, {
+    sheets: {
+      ...doc.sheets,
+      [id]: { ...sheet, titleColor: color ?? undefined }
+    }
+  });
+}
+
 export function activateSheet(doc: Workbook, id: string): Workbook {
   if (!doc.sheets[id]) throw new Error(`sheet not found: ${id}`);
   if (doc.activeSheetId === id) return doc;

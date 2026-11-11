@@ -6,9 +6,18 @@ export interface MenuItem {
   readonly label: string;
   readonly action: () => void;
   readonly danger?: boolean;
+  readonly checked?: boolean;
 }
 
-export type MenuEntry = MenuItem | { readonly separator: true };
+export type MenuEntry =
+  | MenuItem
+  | { readonly separator: true }
+  | { readonly header: string }
+  | {
+      readonly colors: readonly string[];
+      readonly value?: string;
+      readonly onPick: (color: string) => void;
+    };
 
 let closeMenu: (() => void) | null = null;
 
@@ -31,10 +40,52 @@ export function showContextMenu(x: number, y: number, items: readonly MenuEntry[
       menu.appendChild(line);
       continue;
     }
+    if ('header' in item) {
+      const header = document.createElement('div');
+      header.className = 'ctxheader';
+      header.textContent = t(item.header);
+      menu.appendChild(header);
+      continue;
+    }
+    if ('colors' in item) {
+      const row = document.createElement('div');
+      row.className = 'ctxcolors';
+      for (const color of item.colors) {
+        const swatch = document.createElement('button');
+        swatch.type = 'button';
+        swatch.className = `ctxcolor${color === (item.value ?? '') ? ' on' : ''}`;
+        if (color) {
+          swatch.style.background = color;
+          swatch.title = color;
+        } else {
+          swatch.classList.add('reset');
+          swatch.textContent = '×';
+          swatch.title = t('默认');
+        }
+        swatch.addEventListener('click', () => {
+          dismissContextMenu();
+          item.onPick(color);
+        });
+        row.appendChild(swatch);
+      }
+      menu.appendChild(row);
+      continue;
+    }
     const button = document.createElement('button');
     button.className = `ctxitem${item.danger ? ' danger' : ''}`;
     button.setAttribute('role', 'menuitem');
-    button.textContent = t(item.label);
+    if (item.checked) {
+      const check = document.createElement('span');
+      check.className = 'ctxcheck';
+      check.textContent = '✓';
+      button.appendChild(check);
+      const label = document.createElement('span');
+      label.className = 'ctxlabel';
+      label.textContent = t(item.label);
+      button.appendChild(label);
+    } else {
+      button.textContent = t(item.label);
+    }
     button.addEventListener('click', () => {
       dismissContextMenu();
       item.action();

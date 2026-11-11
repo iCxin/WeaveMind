@@ -168,6 +168,8 @@ export interface SheetStyle {
 export interface Sheet {
   readonly id: SheetId;
   readonly title: string;
+  /** 画布名称在画布栏中的自定义颜色 */
+  readonly titleColor?: string;
   readonly rootId: TopicId;
   readonly topics: Readonly<Record<TopicId, Topic>>;
   readonly structure: StructureKind;

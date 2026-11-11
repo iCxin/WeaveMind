@@ -60,7 +60,8 @@ import {
   activateSheet,
   addSheet,
   removeSheet,
-  renameSheet
+  renameSheet,
+  setSheetTitleColor
 } from '../../packages/core/src/sheets.ts';
 import { STRUCTURE_LABELS } from '../../packages/core/src/types.ts';
 import type {
@@ -90,6 +91,13 @@ import {
   type BrowserDocument
 } from './storage.ts';
 import { getLocale, localizeStatic, setLocale, t, type Locale } from './i18n.ts';
+import {
+  closeActivePopover,
+  enhanceSelect,
+  refreshAllSelects,
+  refreshSelect,
+  registerPopover
+} from './ui/select.ts';
 import { layoutSheet } from '../../packages/layout/src/layout.ts';
 import { createEstimateMeasurer } from '../../packages/layout/src/measure.ts';
 
@@ -129,6 +137,7 @@ const autosaveEl = must('autosaveState');
 const localeSelect = must<HTMLSelectElement>('locale');
 const panelButton = must('btn-panel');
 const panelBackdrop = must('panelBackdrop');
+const moreButton = must('btn-more');
 
 const pageSearch = (() => {
   try {
@@ -275,13 +284,23 @@ function buildDemo(): Workbook {
   add('b-iter', '查找替换 · 专注模式', 'i-2');
   add('b-iter', '.xmind 双向互通', 'i-3');
 
+  add('root', '核心体验', 'b-exp', 'heart');
+  add('b-exp', '零依赖 · 打开即用', 'e-1');
+  add('b-exp', '本地优先 · 隐私安全', 'e-2');
+  add('b-exp', '16:9 演说与全屏放映', 'e-3', 'star');
+  add('b-exp', '中文 / English 双语界面', 'e-4');
+
   add('root', '发布计划', 'b-release', 'wait');
   add('b-release', 'Tauri 桌面壳', 'p-1');
   add('b-release', '跨浏览器验证', 'p-2');
+  add('b-release', 'EdgeOne 一键部署', 'p-3', 'done');
+  add('b-release', 'GitHub 公开仓库', 'p-4', 'done');
 
-  sheet = setNote(sheet, 'root', '示例即本项目开发过程：从功能盘点到 71 项测试，再到发布计划。');
+  sheet = setNote(sheet, 'root', '一张导图看懂织思：从需求、架构到测试与发布，全部能力离线运行。');
   sheet = setNote(sheet, 'r-2', '排除 AI 与在线协作，聚焦本地能力。');
-  sheet = setNote(sheet, 'd-2', '.wvm = ZIP + MessagePack + deflate。');
+  sheet = setNote(sheet, 'd-2', '.wvm = ZIP + MessagePack + deflate，打开即还原。');
+  sheet = setNote(sheet, 'e-2', '文档仅保存在当前浏览器，不上传服务器。');
+  sheet = setNote(sheet, 'e-3', '16:9 自适应画幅，可打开独立演示窗口并全屏。');
 
   sheet = setTask(sheet, 'v-1', { progress: 100, priority: 'high', start: '2026-10-29', due: '2026-11-02' });
   sheet = setTask(sheet, 'v-3', { progress: 70, priority: 'medium', start: '2026-11-05', due: '2026-11-09' });
@@ -295,6 +314,26 @@ function buildDemo(): Workbook {
   sheet = addBoundary(sheet, ['q-1', 'q-2', 'q-3'], '质量门禁');
   sheet = addRelationship(sheet, 'r-3', 'p-1', '需求驱动');
   sheet = setText(sheet, 'root', '织思 WeaveMind');
+
+  sheet = addLabel(sheet, 'e-1', '轻量');
+  sheet = addLabel(sheet, 'e-3', '演示');
+  sheet = setTask(sheet, 'e-3', {
+    progress: 100,
+    priority: 'high',
+    start: '2026-11-04',
+    due: '2026-11-10'
+  });
+  sheet = setSheetStyle(sheet, {
+    rainbow: true,
+    lineWidth: 2,
+    edgeStyle: 'curve',
+    palette: ['#2f6f9f', '#3f7d5a', '#b07a2a', '#6b4b8a', '#b0552f', '#3a7a8a', '#9a5a6a']
+  });
+  sheet = setTopicStyle(sheet, 'root', {
+    fill: '#255a83',
+    textColor: '#ffffff',
+    shape: 'rounded'
+  });
 
   doc = updateSheet(doc, sheet);
   return doc;
@@ -463,15 +502,21 @@ function syncToolbar(matchCount: number): void {
   searchCount.textContent = store.view.query ? String(matchCount) : '';
   if (searchInput.value !== store.view.query) searchInput.value = store.view.query;
   if (filterSelect.value !== store.view.filter) filterSelect.value = store.view.filter;
+  refreshSelect(filterSelect);
   filterSelect.title = store.view.filter === 'all'
     ? t('筛选主题')
     : t('筛选：{n} 个主题', { n: lastFilterCount });
+  filterSelectWrap()?.classList.toggle('active', store.view.filter !== 'all');
 }
 
 function syncStructurePicker(): void {
   const current = STRUCTURE_OPTIONS.find((option) => option.id === store.sheet.structure)
     ?? STRUCTURE_OPTIONS[0]!;
-  structureLabel.textContent = t(current.short);
+  const shortLabel = t(current.short);
+  if (structureLabel.textContent !== shortLabel) {
+    structureLabel.textContent = shortLabel;
+    scheduleToolbarLayout();
+  }
   structureGlyph.innerHTML = structureIcon(current.id);
   structureButton.title = t('结构：{name}', { name: t(current.label) });
   structureButton.setAttribute('aria-expanded', String(!structureList.hidden));
@@ -498,39 +543,61 @@ function setupStructurePicker(): void {
       `<span class="structure-icon">${structureIcon(option.id)}</span>` +
       `<span class="structure-name">${t(option.label)}</span>`;
     button.addEventListener('click', () => {
-      structureList.hidden = true;
-      structureButton.setAttribute('aria-expanded', 'false');
+      closeActivePopover();
       store.commit('切换结构', (doc) =>
-        updateSheet(doc, setStructure(getSheet(doc), null, option.id)));
+        updateSheet(doc, setStructure(clearTopicOffsets(getSheet(doc)), null, option.id)));
     });
     frag.appendChild(button);
   }
   structureList.replaceChildren(frag);
 
+  const closeStructure = (): void => {
+    structureList.hidden = true;
+    structureButton.setAttribute('aria-expanded', 'false');
+  };
+
   structureButton.addEventListener('click', (event) => {
     event.stopPropagation();
     const open = structureList.hidden;
-    structureList.hidden = !open;
-    structureButton.setAttribute('aria-expanded', String(open));
+    closeActivePopover();
+    if (!open) return;
+    structureList.hidden = false;
+    structureButton.setAttribute('aria-expanded', 'true');
+    registerPopover(closeStructure);
   });
 
   document.addEventListener('click', (event) => {
     if (!(event.target instanceof Node)) return;
     if (!structureList.hidden && !structureMenu.contains(event.target)) {
-      structureList.hidden = true;
-      structureButton.setAttribute('aria-expanded', 'false');
+      closeActivePopover();
     }
   });
 }
 
+function setupCustomSelects(): void {
+  enhanceSelect(filterSelect, { label: '筛选', className: 'filter-select' });
+  enhanceSelect(must<HTMLSelectElement>('topic-shape'), { className: 'panel-select' });
+  enhanceSelect(must<HTMLSelectElement>('task-priority'), { className: 'panel-select' });
+  enhanceSelect(must<HTMLSelectElement>('edge-style'), { className: 'panel-select' });
+  enhanceSelect(localeSelect, { className: 'locale-select-wrap' });
+}
+
+function applyLocale(next: Locale): void {
+  localeSelect.value = next;
+  setLocale(next);
+  localizeStatic();
+  refreshAllSelects();
+  refresh();
+  toast('语言已切换');
+  requestAnimationFrame(() => layoutToolbar());
+}
+
 function setupLocale(): void {
   localeSelect.value = getLocale();
+  refreshSelect(localeSelect);
   if (document.documentElement) document.documentElement.lang = getLocale();
   localeSelect.addEventListener('change', () => {
-    setLocale(localeSelect.value as Locale);
-    localizeStatic();
-    refresh();
-    toast('语言已切换');
+    applyLocale(localeSelect.value as Locale);
   });
 }
 
@@ -560,6 +627,226 @@ function setupPresentation(): void {
   store.setView({ mode: 'pitch' });
   pitch.reset();
   document.addEventListener('fullscreenchange', () => pitch.syncFullscreen());
+}
+
+/* ------------------------------------------------------------------ */
+/* 工具栏溢出折叠                                                       */
+/* ------------------------------------------------------------------ */
+
+let overflowItems: HTMLElement[] = [];
+
+function filterSelectWrap(): HTMLElement | null {
+  return document.querySelector<HTMLElement>('.wselect.filter-select');
+}
+
+function localeSelectWrap(): HTMLElement | null {
+  return document.querySelector<HTMLElement>('.wselect.locale-select-wrap');
+}
+
+function overflowPriority(el: HTMLElement): number {
+  if (el.id === 'btn-zen') return 100;
+  if (el.id === 'btn-fit') return 96;
+  if (el.id === 'btn-replace') return 92;
+  if (el === localeSelectWrap()) return 88;
+  if (el === structureMenu) return 84;
+  if (el === must('exportMenu')) return 80;
+  if (el === filterSelectWrap()) return 76;
+  if (el.id === 'viewTabs') return 8;
+  if (el.classList.contains('group')) return 48;
+  return 40;
+}
+
+function toolbarCandidates(): HTMLElement[] {
+  const bar = document.querySelector('.bar');
+  if (!bar) return [];
+  const out: HTMLElement[] = [];
+  bar.querySelectorAll<HTMLElement>(':scope > .group, :scope > .sep').forEach((el) => out.push(el));
+  for (const el of [
+    must('btn-replace'),
+    filterSelectWrap(),
+    must('exportMenu'),
+    structureMenu,
+    must('btn-fit'),
+    must('btn-zen'),
+    localeSelectWrap(),
+    document.getElementById('viewTabs')
+  ]) {
+    if (el instanceof HTMLElement) out.push(el);
+  }
+  return out;
+}
+
+function toolbarContentWidth(bar: HTMLElement): number {
+  const style = window.getComputedStyle?.(bar);
+  const gap = Number.parseFloat(style?.columnGap ?? '0') || 0;
+  const padding = (Number.parseFloat(style?.paddingLeft ?? '0') || 0) +
+    (Number.parseFloat(style?.paddingRight ?? '0') || 0);
+  const children = Array.from(bar.children)
+    .filter((el): el is HTMLElement => el instanceof HTMLElement && !el.hidden);
+  let total = padding;
+  for (const child of children) {
+    if (child.classList.contains('spacer')) continue;
+    total += child.getBoundingClientRect().width;
+  }
+  total += gap * Math.max(0, children.length - 1);
+  return total;
+}
+
+function layoutToolbar(): void {
+  if (isPresentation) return;
+  const bar = document.querySelector<HTMLElement>('.bar');
+  if (!bar) return;
+
+  const candidates = toolbarCandidates();
+  candidates.forEach((el) => el.classList.remove('is-overflowed'));
+
+  moreButton.hidden = false;
+  moreButton.classList.add('is-idle');
+  const ordered = [...candidates].sort((a, b) => overflowPriority(b) - overflowPriority(a));
+
+  let guard = 0;
+  while (toolbarContentWidth(bar) > bar.clientWidth + 1 && guard < 120) {
+    const next = ordered.find((el) => !el.classList.contains('is-overflowed'));
+    if (!next) break;
+    next.classList.add('is-overflowed');
+    guard += 1;
+  }
+
+  overflowItems = candidates.filter(
+    (el) => el.classList.contains('is-overflowed') && !el.classList.contains('sep')
+  );
+  if (overflowItems.length > 0) {
+    moreButton.classList.remove('is-idle');
+    moreButton.title = t('更多');
+  } else {
+    moreButton.hidden = true;
+    moreButton.classList.remove('is-idle');
+  }
+}
+
+function showOverflowMenu(): void {
+  const rect = moreButton.getBoundingClientRect();
+  const items: MenuEntry[] = [];
+  let first = true;
+  const addSeparator = (): void => {
+    if (!first) items.push({ separator: true });
+    first = false;
+  };
+
+  for (const el of overflowItems) {
+    if (el.classList.contains('sep')) continue;
+    if (el.id === 'viewTabs') {
+      addSeparator();
+      items.push({ header: '视图切换' });
+      el.querySelectorAll<HTMLButtonElement>('[data-mode]').forEach((button) => {
+        items.push({
+          label: button.textContent?.trim() ?? '',
+          checked: button.dataset.mode === store.view.mode,
+          action: () => setMode((button.dataset.mode as ViewMode) ?? 'map')
+        });
+      });
+      continue;
+    }
+    if (el === filterSelectWrap()) {
+      addSeparator();
+      items.push({ header: '筛选' });
+      for (const option of Array.from(filterSelect.options)) {
+        items.push({
+          label: option.textContent?.trim() ?? '',
+          checked: filterSelect.value === option.value,
+          action: () => {
+            filterSelect.value = option.value;
+            filterSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            refreshSelect(filterSelect);
+          }
+        });
+      }
+      continue;
+    }
+    if (el === structureMenu) {
+      addSeparator();
+      items.push({ header: '结构' });
+      for (const option of STRUCTURE_OPTIONS) {
+        items.push({
+          label: option.label,
+          checked: store.sheet.structure === option.id,
+          action: () => {
+            store.commit('切换结构', (doc) =>
+              updateSheet(doc, setStructure(getSheet(doc), null, option.id)));
+          }
+        });
+      }
+      continue;
+    }
+    if (el === must('exportMenu')) {
+      addSeparator();
+      items.push({ header: '导出' });
+      exportList.querySelectorAll<HTMLElement>('[data-export]').forEach((button) => {
+        items.push({
+          label: button.textContent?.trim() ?? '',
+          action: () => void exportAs(button.dataset.export ?? '')
+        });
+      });
+      continue;
+    }
+    if (el === localeSelectWrap()) {
+      addSeparator();
+      items.push({ header: '语言 / Language' });
+      for (const option of Array.from(localeSelect.options)) {
+        items.push({
+          label: option.textContent?.trim() ?? '',
+          checked: localeSelect.value === option.value,
+          action: () => applyLocale(option.value as Locale)
+        });
+      }
+      continue;
+    }
+    if (el.classList.contains('group')) {
+      addSeparator();
+      el.querySelectorAll<HTMLButtonElement>('button').forEach((button) => {
+        items.push({
+          label: button.textContent?.trim() ?? '',
+          action: () => button.click()
+        });
+      });
+      continue;
+    }
+    addSeparator();
+    items.push({
+      label: el.textContent?.trim() ?? '',
+      action: () => (el as HTMLButtonElement).click()
+    });
+  }
+
+  if (items.length === 0) return;
+  showContextMenu(rect.left, rect.bottom + 4, items);
+}
+
+let toolbarFrame = 0;
+
+function scheduleToolbarLayout(): void {
+  if (typeof window.requestAnimationFrame !== 'function') {
+    layoutToolbar();
+    return;
+  }
+  if (typeof window.cancelAnimationFrame === 'function') {
+    window.cancelAnimationFrame(toolbarFrame);
+  }
+  toolbarFrame = window.requestAnimationFrame(() => layoutToolbar());
+}
+
+function setupToolbarOverflow(): void {
+  moreButton.addEventListener('click', (event) => {
+    event.stopPropagation();
+    showOverflowMenu();
+  });
+  window.addEventListener('resize', scheduleToolbarLayout);
+  const bar = document.querySelector('.bar');
+  if (bar && typeof ResizeObserver === 'function') {
+    new ResizeObserver(scheduleToolbarLayout).observe(bar);
+  }
+  document.fonts?.ready?.then?.(scheduleToolbarLayout)?.catch?.(() => undefined);
+  scheduleToolbarLayout();
 }
 
 function primarySelection(): TopicId | null {
@@ -622,7 +909,10 @@ function syncPanel(): void {
   if (Number(lineWidth.value) !== sheet.style.lineWidth) lineWidth.value = String(sheet.style.lineWidth);
   const edgeSelect = must<HTMLSelectElement>('edge-style');
   const edgeValue = sheet.style.edgeStyle ?? 'curve';
-  if (edgeSelect.value !== edgeValue) edgeSelect.value = edgeValue;
+  if (edgeSelect.value !== edgeValue) {
+    edgeSelect.value = edgeValue;
+    refreshSelect(edgeSelect);
+  }
 
   const toggleTodoBtn = must('toggle-todo');
   const toggleTaskBtn = must('toggle-task');
@@ -667,6 +957,8 @@ function syncPanel(): void {
     zoneList.appendChild(chip);
   }
 
+  syncStyleDots('titleColors', store.sheet.titleColor ?? '');
+
   if (!topic) {
     toggleTodoBtn.classList.remove('on');
     toggleTaskBtn.classList.remove('on');
@@ -691,7 +983,10 @@ function syncPanel(): void {
   const style = topic.styleOverride ?? {};
   const shapeSelect = must<HTMLSelectElement>('topic-shape');
   const shapeValue = style.shape ?? '';
-  if (shapeSelect.value !== shapeValue) shapeSelect.value = shapeValue;
+  if (shapeSelect.value !== shapeValue) {
+    shapeSelect.value = shapeValue;
+    refreshSelect(shapeSelect);
+  }
   document.querySelectorAll<HTMLButtonElement>('[data-style]').forEach((button) => {
     const key = button.dataset.style;
     const active = key === 'bold'
@@ -749,7 +1044,10 @@ function syncPanel(): void {
     const progress = must<HTMLInputElement>('task-progress');
     if (document.activeElement !== progress) progress.value = String(topic.task.progress);
     const priority = must<HTMLSelectElement>('task-priority');
-    if (priority.value !== topic.task.priority) priority.value = topic.task.priority;
+    if (priority.value !== topic.task.priority) {
+      priority.value = topic.task.priority;
+      refreshSelect(priority);
+    }
     const start = must<HTMLInputElement>('task-start');
     if (document.activeElement !== start) start.value = topic.task.start ?? '';
     const due = must<HTMLInputElement>('task-due');
@@ -813,10 +1111,19 @@ function syncSheetBar(): void {
 
     const tab = document.createElement('button');
     tab.className = `sheet-tab${sheetId === store.doc.activeSheetId ? ' on' : ''}`;
-    tab.textContent = sheet.title;
+    const name = document.createElement('span');
+    name.className = 'sheet-name';
+    name.textContent = sheet.title;
+    tab.appendChild(name);
+    if (sheet.titleColor) tab.style.color = sheet.titleColor;
     tab.title = t('{title}（双击重命名）', { title: sheet.title });
     tab.addEventListener('click', () => switchSheet(sheetId));
     tab.addEventListener('dblclick', () => beginSheetRename(sheetId));
+    tab.addEventListener('contextmenu', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      showSheetMenu(event.clientX, event.clientY, sheetId);
+    });
     if (store.doc.sheetOrder.length > 1) {
       const close = document.createElement('button');
       close.className = 'x';
@@ -834,21 +1141,23 @@ function syncSheetBar(): void {
   const add = document.createElement('button');
   add.className = 'sheet-add';
   add.textContent = '+';
-  add.title = '新建画布';
-  add.addEventListener('click', () => {
-    let created = '';
-    store.commit('新建画布', (doc) => {
-      const result = addSheet(doc);
-      created = result.sheetId;
-      return result.doc;
-    });
-    store.setView({ selection: new Set(), collapsed: new Set(), zoom: 1, panX: 0, panY: 0 });
-    toast('已新建画布');
-    if (created) requestAnimationFrame(() => fitToContent());
-  });
+  add.title = t('新建画布');
+  add.addEventListener('click', createSheetAction);
   frag.appendChild(add);
 
   sheetbar.replaceChildren(frag);
+}
+
+function createSheetAction(): void {
+  let created = '';
+  store.commit('新建画布', (doc) => {
+    const result = addSheet(doc);
+    created = result.sheetId;
+    return result.doc;
+  });
+  store.setView({ selection: new Set(), collapsed: new Set(), zoom: 1, panX: 0, panY: 0 });
+  toast('已新建画布');
+  if (created) requestAnimationFrame(() => fitToContent());
 }
 
 function switchSheet(id: string): void {
@@ -890,6 +1199,30 @@ function deleteSheet(id: string): void {
       store.setView({ selection: new Set(), collapsed: new Set(), zoom: 1, panX: 0, panY: 0 });
       requestAnimationFrame(() => fitToContent());
     });
+}
+
+const SHEET_TITLE_COLORS = [
+  '', '#255a83', '#2b7a4b', '#b0552f', '#6b4b8a', '#b7791f', '#b3261e', '#3d4a58'
+];
+
+function setSheetColor(id: string, color: string): void {
+  store.commit('画布名称颜色', (doc) => setSheetTitleColor(doc, id, color || null));
+}
+
+function showSheetMenu(x: number, y: number, id: string): void {
+  const sheet = store.doc.sheets[id];
+  if (!sheet) return;
+  const items: MenuEntry[] = [
+    { label: '重命名画布', action: () => beginSheetRename(id) },
+    { header: '名称颜色' },
+    { colors: SHEET_TITLE_COLORS, value: sheet.titleColor ?? '', onPick: (color) => setSheetColor(id, color) },
+    { separator: true },
+    { label: '新建画布', action: createSheetAction }
+  ];
+  if (store.doc.sheetOrder.length > 1) {
+    items.push({ separator: true }, { label: '删除该画布', danger: true, action: () => deleteSheet(id) });
+  }
+  showContextMenu(x, y, items);
 }
 
 /* ------------------------------------------------------------------ */
@@ -2029,6 +2362,59 @@ stage.addEventListener('contextmenu', (event) => {
   showContextMenu(event.clientX, event.clientY, items);
 });
 
+/** 全局禁用浏览器默认右键菜单；非画布区域显示统一风格的应用菜单。 */
+window.addEventListener('contextmenu', (event) => {
+  if (event.defaultPrevented) return;
+  event.preventDefault();
+  const target = event.target;
+  if (target instanceof HTMLElement && target.closest('.sheet-tab')) return;
+
+  const editable = target instanceof HTMLElement &&
+    (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
+  const items: MenuEntry[] = [];
+
+  if (editable) {
+    const field = target as HTMLInputElement | HTMLTextAreaElement;
+    items.push(
+      {
+        label: '剪切',
+        action: () => {
+          field.focus();
+          document.execCommand('cut');
+        }
+      },
+      {
+        label: '复制',
+        action: () => {
+          field.focus();
+          document.execCommand('copy');
+        }
+      },
+      {
+        label: '粘贴',
+        action: () => {
+          field.focus();
+          void navigator.clipboard?.readText().then((text) => {
+            if (text) document.execCommand('insertText', false, text);
+          }).catch(() => undefined);
+        }
+      },
+      { label: '全选', action: () => field.select() },
+      { separator: true }
+    );
+  }
+
+  if (store.canUndo) items.push({ label: '撤销', action: () => store.undo() });
+  if (store.canRedo) items.push({ label: '重做', action: () => store.redo() });
+  if (items.length > 0 && !editable) items.push({ separator: true });
+  items.push(
+    { label: '适应画布', action: () => fitToContent() },
+    { label: '专注模式', action: () => toggleZen() },
+    { label: '属性面板', action: () => setPanelOpen(true) }
+  );
+  showContextMenu(event.clientX, event.clientY, items);
+});
+
 /* ------------------------------------------------------------------ */
 /* 键盘                                                                */
 /* ------------------------------------------------------------------ */
@@ -2128,11 +2514,7 @@ window.addEventListener('keydown', (event) => {
       setPanelOpen(false);
       return;
     }
-    if (!structureList.hidden) {
-      structureList.hidden = true;
-      structureButton.setAttribute('aria-expanded', 'false');
-      return;
-    }
+    if (closeActivePopover()) return;
     const app = document.querySelector('.app');
     if (app?.classList.contains('zen')) {
       toggleZen(false);
@@ -2334,6 +2716,24 @@ function setupTopicStyleControls(): void {
 
   populate('fillColors', FILL_COLORS, 'fill');
   populate('textColors', TEXT_COLORS, 'textColor');
+
+  const titleHost = must('titleColors');
+  titleHost.replaceChildren();
+  for (const color of SHEET_TITLE_COLORS) {
+    const dot = document.createElement('button');
+    dot.className = 'style-dot sheet-title-dot';
+    dot.dataset.color = color;
+    if (color) {
+      dot.style.background = color;
+      dot.title = color;
+    } else {
+      dot.classList.add('default');
+      dot.textContent = '默';
+      dot.title = t('默认');
+    }
+    dot.addEventListener('click', () => setSheetColor(store.doc.activeSheetId, color));
+    titleHost.appendChild(dot);
+  }
 
   const shapeSelect = must<HTMLSelectElement>('topic-shape');
   shapeSelect.addEventListener('change', () => {
@@ -2930,10 +3330,12 @@ setInterval(() => {
   if (store.dirty && Date.now() - lastAutosaveAt >= 5000) persistAutosave();
 }, 5000);
 
+setupCustomSelects();
 localizeStatic();
 setupLocale();
 setupPanelDrawer();
 setupStructurePicker();
+setupToolbarOverflow();
 
 const initialRect = stage.getBoundingClientRect();
 renderer.resize(initialRect.width || 960, initialRect.height || 620);

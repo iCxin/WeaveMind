@@ -79,7 +79,7 @@ export function createSheet(id: string, rootText = '中心主题'): Sheet {
   const root = createTopic({ id: rootId, kind: 'root', text: rootText });
   return {
     id,
-    title: '画布 1',
+    title: '示例',
     rootId,
     topics: { [rootId]: root },
     structure: 'mindmap',

@@ -1,21 +1,69 @@
 /**
- * 演说视图：中心主题为封面，每个一级分支生成一页。
- * 与导图同源，不产生副本（PRD FR-55）。
+ * 演说视图：每一页把导图渲染为 16:9 的思维导图画面，而非大纲列表。
  *
- * 16:9 画幅：普通视图在应用内自适应最大化；`?present=1` 为独立演示窗口，
- * 支持浏览器全屏（F 键或右上角按钮），← → 翻页，Esc 退出。
+ * - 封面展示整张导图；每个一级分支生成一页，展示该分支子树；
+ * - 使用与导图同源的布局与 SVG 渲染，保证演示与编辑内容一致；
+ * - `?present=1` 为独立演示窗口，支持浏览器全屏、← → 翻页与 Esc 退出；
+ * - 页码显示在幻灯片右下角，不再展示主题数等统计数据。
  */
 
-import type { Sheet, TopicId } from '../../../packages/core/src/types.ts';
+import type { Sheet, Topic, TopicId } from '../../../packages/core/src/types.ts';
 import { stripRich } from '../../../packages/core/src/rich.ts';
+import { layoutSheet } from '../../../packages/layout/src/layout.ts';
+import { createEstimateMeasurer } from '../../../packages/layout/src/measure.ts';
+import { toSvg } from '../../../packages/render/src/svg.ts';
 import { t } from '../i18n.ts';
 import type { ViewHost } from './host.ts';
 
 interface Slide {
   readonly title: string;
-  readonly subtitle: string;
-  readonly items: { id: TopicId; text: string }[];
+  readonly rootId: TopicId;
   readonly note?: string;
+}
+
+/** 以某个主题为根，裁剪出仅包含其后代的画布，用于单页演示。 */
+function subtreeSheet(source: Sheet, rootId: TopicId): Sheet {
+  const ids = new Set<TopicId>();
+  const walk = (id: TopicId): void => {
+    if (ids.has(id)) return;
+    const topic = source.topics[id];
+    if (!topic) return;
+    ids.add(id);
+    for (const child of topic.children) {
+      if (source.topics[child]?.kind !== 'summary') walk(child);
+    }
+  };
+  walk(rootId);
+
+  const topics: Record<string, Topic> = {};
+  for (const id of ids) {
+    const topic = source.topics[id]!;
+    topics[id] = {
+      ...topic,
+      parentId: id === rootId ? null : topic.parentId,
+      children: topic.children.filter((child) => ids.has(child)),
+      kind: id === rootId ? 'root' : topic.kind,
+      offsetX: undefined,
+      offsetY: undefined,
+      summaryOf: undefined
+    };
+  }
+
+  return {
+    ...source,
+    rootId,
+    topics,
+    structure: 'mindmap',
+    boundaries: [],
+    relationships: [],
+    zones: [],
+    style: {
+      ...source.style,
+      background: '#ffffff',
+      darkCanvas: false,
+      edgeStyle: 'curve'
+    }
+  };
 }
 
 export class PitchView {
@@ -91,33 +139,30 @@ export class PitchView {
 
     const cover: Slide = {
       title: stripRich(root.text),
-      subtitle: t('{topics} 个主题 · {branches} 个分支', {
-        topics: Object.keys(sheet.topics).length,
-        branches: root.children.length
-      }),
-      items: root.children
-        .map((id) => sheet.topics[id])
-        .filter((topic): topic is NonNullable<typeof topic> => Boolean(topic))
-        .map((topic) => ({ id: topic.id, text: stripRich(topic.text) })),
+      rootId: root.id,
       note: root.note
     };
 
     const pages = root.children
       .map((id) => sheet.topics[id])
       .filter((topic): topic is NonNullable<typeof topic> => Boolean(topic))
+      .filter((topic) => topic.kind !== 'summary')
       .map<Slide>((branch) => ({
         title: stripRich(branch.text),
-        subtitle: branch.children.length
-          ? t('{n} 个子主题', { n: branch.children.length })
-          : t('概览'),
-        items: branch.children
-          .map((id) => sheet.topics[id])
-          .filter((topic): topic is NonNullable<typeof topic> => Boolean(topic))
-          .map((topic) => ({ id: topic.id, text: stripRich(topic.text) })),
+        rootId: branch.id,
         note: branch.note
       }));
 
     return [cover, ...pages];
+  }
+
+  private renderMap(slide: Slide): string {
+    const source = this.host.sheet();
+    const sheet = subtreeSheet(source, slide.rootId);
+    const measure = createEstimateMeasurer();
+    const layout = layoutSheet(sheet, new Set(), measure, 'mindmap');
+    const svg = toSvg(sheet, layout, { dark: false, measure });
+    return svg.replace('<svg ', '<svg preserveAspectRatio="xMidYMid meet" ');
   }
 
   render(): void {
@@ -129,11 +174,12 @@ export class PitchView {
 
     if (this.index >= slides.length) this.index = 0;
     const slide = slides[this.index]!;
+    const page = `${this.index + 1} / ${slides.length}`;
 
     const bar = this.presentation
       ? `<div class="pitch-bar present-bar">` +
         `<span class="pitch-tag">${t('演说模式')}</span>` +
-        `<span class="pitch-count">${this.index + 1} / ${slides.length}</span>` +
+        `<span class="pitch-count">${page}</span>` +
         `<span class="spacer"></span>` +
         `<span class="pitch-hint">${t('← → 翻页 · F 全屏 · Esc 退出')}</span>` +
         `<button class="pbtn" data-act="prev">${t('上一页')}</button>` +
@@ -143,7 +189,7 @@ export class PitchView {
         `</div>`
       : `<div class="pitch-bar">` +
         `<span class="pitch-tag">${t('演说模式')}</span>` +
-        `<span class="pitch-count">${this.index + 1} / ${slides.length}</span>` +
+        `<span class="pitch-count">${page}</span>` +
         `<span class="spacer"></span>` +
         `<button class="pbtn" data-act="prev">${t('上一页')}</button>` +
         `<button class="pbtn" data-act="next">${t('下一页')}</button>` +
@@ -155,15 +201,14 @@ export class PitchView {
       `<div class="pitch-shell${this.presentation ? ' is-presenting' : ''}">` +
       bar +
       `<div class="pitch-stage">` +
-      `<div class="slide">` +
-      `<div class="slide-kicker">${escapeHtml(slide.subtitle)}</div>` +
+      `<div class="slide map-slide">` +
+      `<div class="slide-head">` +
+      `<div class="slide-kicker">${t('演说模式')}</div>` +
       `<h1 class="slide-title">${escapeHtml(slide.title)}</h1>` +
-      (slide.items.length
-        ? `<ul class="slide-list">${slide.items
-            .map((item) => `<li data-id="${item.id}">${escapeHtml(item.text)}</li>`)
-            .join('')}</ul>`
-        : `<div class="slide-empty">${t('通过 Tab 为该分支添加子主题')}</div>`) +
+      `</div>` +
+      `<div class="slide-map">${this.renderMap(slide)}</div>` +
       (slide.note ? `<div class="slide-note">${escapeHtml(slide.note)}</div>` : '') +
+      `<span class="slide-page">${page}</span>` +
       `</div></div></div>`;
 
     this.el.querySelectorAll<HTMLElement>('[data-act]').forEach((button) => {
@@ -175,13 +220,6 @@ export class PitchView {
         else if (act === 'fullscreen') this.toggleFullscreen();
         else if (act === 'close') window.close();
         else if (act === 'exit') this.host.exitView?.();
-      });
-    });
-
-    this.el.querySelectorAll<HTMLElement>('.slide-list li').forEach((item) => {
-      item.addEventListener('click', () => {
-        const id = item.dataset.id;
-        if (id) this.host.select(id);
       });
     });
   }

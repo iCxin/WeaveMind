@@ -966,6 +966,8 @@ textarea {
   position: fixed;
   z-index: 100;
   min-width: 182px;
+  max-height: min(80vh, 560px);
+  overflow-y: auto;
   padding: 5px;
   background: rgba(255, 255, 255, .98);
   border: 1px solid var(--line-strong);
@@ -1518,4 +1520,349 @@ body.present .present-bar .pbtn:hover {
   .bar { min-height: 44px; }
   .pitch-bar { padding-block: 6px; }
 }
+
+/* ================= v0.15: custom dropdowns / toolbar overflow ================= */
+
+/* 顶栏单行显示，放不下的项目折叠进 »» 菜单 */
+.bar {
+  flex-wrap: nowrap;
+  overflow: visible;
+}
+
+.bar > .group,
+.bar > .menu,
+.bar > .wselect,
+.bar > .sep,
+.bar > #btn-replace,
+.bar > #btn-fit,
+.bar > #btn-zen,
+.bar > #viewTabs {
+  flex: 0 0 auto;
+}
+
+.bar > .spacer { flex: 1 1 0; min-width: 0; }
+
+.bar .searchbox {
+  flex: 0 1 176px;
+  min-width: 88px;
+}
+
+.bar button,
+.bar select {
+  white-space: nowrap;
+}
+
+.is-overflowed { display: none !important; }
+
+.more-trigger {
+  width: 34px;
+  min-width: 34px;
+  padding: 0;
+  font-size: 12px;
+  letter-spacing: .5px;
+  color: var(--ink-500);
+}
+
+.more-trigger.is-idle {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.more-trigger[hidden] { display: none !important; }
+
+/* 自定义下拉（替代原生 select） */
+.wselect {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  min-width: 0;
+}
+
+.wselect > select {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.wselect-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  max-width: 100%;
+  padding: 0 8px;
+  font-size: 12.5px;
+  color: var(--ink-700);
+  background: var(--surface-0);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+
+.wselect-trigger:hover {
+  border-color: var(--brand-500);
+  color: var(--brand-600);
+  background: var(--brand-50);
+}
+
+.wselect-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wselect-chev {
+  font-size: 9px;
+  color: var(--ink-300);
+  line-height: 1;
+}
+
+.wselect-icon {
+  width: 34px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  color: var(--brand-600);
+}
+
+.wselect-icon svg { width: 100%; height: 100%; }
+
+.wselect-pop {
+  position: fixed;
+  z-index: 130;
+  min-width: 132px;
+  max-height: min(60vh, 380px);
+  overflow: auto;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-2);
+}
+
+.wselect-pop[hidden] { display: none; }
+
+.wselect-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 8px;
+  font-size: 12.5px;
+  text-align: left;
+  color: var(--ink-700);
+  background: transparent;
+  border: none;
+  border-radius: 5px;
+  white-space: nowrap;
+}
+
+.wselect-option:hover {
+  color: var(--brand-600);
+  background: var(--brand-50);
+}
+
+.wselect-option.on {
+  color: var(--brand-600);
+  background: var(--brand-50);
+  font-weight: 600;
+}
+
+.wselect-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wselect-check {
+  width: 12px;
+  flex: none;
+  color: var(--brand-600);
+  font-weight: 700;
+}
+
+.wselect.filter-select { width: 104px; }
+.wselect.filter-select .wselect-trigger { width: 100%; }
+
+.wselect.active .wselect-trigger {
+  color: var(--brand-600);
+  border-color: rgba(47, 111, 159, .45);
+  background: var(--brand-50);
+}
+
+.wselect.locale-select-wrap .wselect-trigger {
+  height: 28px;
+  max-width: 132px;
+}
+
+/* 结构选择器与自定义下拉保持同一视觉语言 */
+.bar .structure-trigger {
+  height: 30px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface-0);
+}
+
+.bar .structure-trigger:hover {
+  border-color: var(--brand-500);
+  background: var(--brand-50);
+}
+
+.row .wselect { max-width: 150px; }
+.row .wselect .wselect-trigger { min-width: 96px; }
+
+.panel .wselect { max-width: 168px; }
+
+/* 画布名称：每个标签独立按文本宽度显示，新增画布不影响其它标签 */
+.sheet-tab {
+  flex: 0 0 auto;
+  max-width: 220px;
+}
+
+.sheet-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 统一右键菜单中的分组、勾选与色板 */
+.ctxheader {
+  padding: 6px 10px 3px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--ink-300);
+}
+
+.ctxitem {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ctxcheck {
+  width: 12px;
+  flex: none;
+  color: var(--brand-600);
+  font-weight: 700;
+}
+
+.ctxlabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ctxcolors {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 3px 10px 8px;
+}
+
+.ctxcolor {
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  padding: 0;
+  border: 1px solid rgba(20, 40, 60, .18);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.ctxcolor.on {
+  box-shadow: 0 0 0 2px #fff, 0 0 0 3px var(--brand-500);
+}
+
+.ctxcolor.reset {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--ink-500);
+  background: #fff;
+}
+
+/* 移除旧的“手机隐藏专注”规则，改由 »» 折叠 */
+@media (max-width: 720px) {
+  #btn-zen { display: inline-flex; }
+}
+
+/* 窄屏下搜索框不参与挤压画布标签 */
+@media (max-width: 560px) {
+  .searchbox { flex-basis: 88px; max-width: none; order: 0; }
+}
+
+/* ================= v0.16: pitch 思维导图画面 ================= */
+
+.map-slide {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: clamp(14px, 2.8cqw, 34px) clamp(16px, 3.2cqw, 42px);
+  animation: slideEnter 420ms var(--ease) both;
+}
+
+.map-slide .slide-head { flex: none; }
+
+.map-slide .slide-title {
+  margin: .18em 0 .28em;
+  font-size: clamp(17px, 2.9cqw, 38px);
+  line-height: 1.2;
+}
+
+.slide-map {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.slide-map svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  animation: mapEnter 520ms 70ms var(--ease) both;
+}
+
+.map-slide .slide-note {
+  flex: none;
+  max-height: 3.4em;
+  overflow: hidden;
+  margin-top: .4em;
+  padding-top: .5em;
+  font-size: clamp(9px, 1.1cqw, 14px);
+}
+
+.slide-page {
+  position: absolute;
+  right: clamp(10px, 2.2cqw, 26px);
+  bottom: clamp(8px, 1.8cqw, 20px);
+  font-family: var(--mono);
+  font-size: clamp(9px, 1.15cqw, 13px);
+  color: var(--ink-300);
+  letter-spacing: .04em;
+}
+
+@keyframes slideEnter {
+  from { opacity: 0; transform: translateY(10px) scale(.994); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes mapEnter {
+  from { opacity: 0; transform: scale(.985); }
+  to { opacity: 1; transform: none; }
+}
+
+body.present .map-slide { animation-duration: 480ms; }
+
+
 

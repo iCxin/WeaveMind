@@ -19,7 +19,8 @@ import {
   duplicateSheet,
   moveSheet,
   removeSheet,
-  renameSheet
+  renameSheet,
+  setSheetTitleColor
 } from '../src/sheets.ts';
 import {
   derivedProgress,
@@ -77,12 +78,21 @@ test('多画布：至少保留一张，删除不存在画布报错', () => {
   assert.throws(() => removeSheet(doc, 'missing'), /sheet not found/);
 });
 
+test('多画布：名称颜色可设置与清除', () => {
+  const { doc, sheetId } = docWithTree();
+  const colored = setSheetTitleColor(doc, sheetId, '#b0552f');
+  assert.equal(colored.sheets[sheetId]?.titleColor, '#b0552f');
+  assert.notEqual(colored, doc);
+  const cleared = setSheetTitleColor(colored, sheetId, null);
+  assert.equal(cleared.sheets[sheetId]?.titleColor, undefined);
+});
+
 test('多画布：复制保留内容与结构且互不影响', () => {
   const { doc, sheetId } = docWithTree();
   const result = duplicateSheet(doc, sheetId);
   const copy = result.doc.sheets[result.sheetId]!;
   assert.equal(Object.keys(copy.topics).length, 4);
-  assert.equal(copy.title, '画布 1 副本');
+  assert.equal(copy.title, '示例 副本');
   assert.notEqual(copy.id, sheetId);
   assert.equal(result.doc.sheetOrder.length, 2);
 });
