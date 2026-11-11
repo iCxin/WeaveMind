@@ -607,7 +607,9 @@ export class CanvasRenderer {
     }
 
     const rightIcons =
-      ((topic.attachments?.length ?? 0) > 0 ? 14 : 0) + ((topic.audio?.length ?? 0) > 0 ? 14 : 0);
+      (topic.link ? 14 : 0) +
+      ((topic.attachments?.length ?? 0) > 0 ? 14 : 0) +
+      ((topic.audio?.length ?? 0) > 0 ? 14 : 0);
     const maxWidth = box.w - (textX - x) - 12 - rightIcons;
 
     const baseFont = `${italic ? 'italic ' : ''}${weight} ${fontSize}px ${FONT_STACK}`;
@@ -692,6 +694,11 @@ export class CanvasRenderer {
       if ((topic.attachments?.length ?? 0) > 0) {
         ctx.fillStyle = dark ? '#9fb3c8' : '#5f7d95';
         ctx.fillText('📎', rx, y + box.h / 2 + 0.5);
+        rx -= 14;
+      }
+      if (topic.link) {
+        ctx.fillStyle = dark ? '#8fc0e2' : '#2f6f9f';
+        ctx.fillText('↗', rx, y + box.h / 2 + 0.5);
       }
       ctx.textAlign = 'left';
     }

@@ -13,6 +13,19 @@ export interface DialogAction {
   readonly kind?: DialogActionKind;
 }
 
+export interface DialogListItem {
+  readonly label: string;
+  readonly value: string;
+  readonly hint?: string;
+}
+
+export interface DialogList {
+  readonly label?: string;
+  readonly search?: boolean;
+  readonly items: readonly DialogListItem[];
+  readonly value?: string;
+}
+
 export interface DialogOptions {
   readonly title: string;
   readonly message?: string;
@@ -21,12 +34,14 @@ export interface DialogOptions {
     readonly value?: string;
     readonly placeholder?: string;
   };
+  readonly list?: DialogList;
   readonly actions: readonly DialogAction[];
 }
 
 export interface DialogResult {
   readonly action: string;
   readonly input: string;
+  readonly selected: string;
 }
 
 let activeClose: ((result: DialogResult | null) => void) | null = null;
@@ -83,11 +98,76 @@ export function showDialog(options: DialogOptions): Promise<DialogResult | null>
       card.appendChild(input);
     }
 
+    let listSelection = options.list?.value ?? options.list?.items[0]?.value ?? '';
+    let listSearch: HTMLInputElement | null = null;
+    let listHost: HTMLDivElement | null = null;
+    if (options.list) {
+      const list = options.list;
+      if (list.label) {
+        const label = document.createElement('label');
+        label.className = 'dialog-label';
+        label.textContent = t(list.label);
+        card.appendChild(label);
+      }
+      if (list.search) {
+        listSearch = document.createElement('input');
+        listSearch.className = 'dialog-input dialog-search';
+        listSearch.type = 'search';
+        listSearch.placeholder = t('搜索主题');
+        card.appendChild(listSearch);
+      }
+      listHost = document.createElement('div');
+      listHost.className = 'dialog-list';
+      card.appendChild(listHost);
+
+      const renderList = (): void => {
+        if (!listHost) return;
+        listHost.replaceChildren();
+        const query = (listSearch?.value ?? '').trim().toLowerCase();
+        let shown = 0;
+        for (const item of list.items) {
+          const haystack = `${item.label} ${item.hint ?? ''}`.toLowerCase();
+          if (query && !haystack.includes(query)) continue;
+          shown += 1;
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = `dialog-item${item.value === listSelection ? ' on' : ''}`;
+          const label = document.createElement('span');
+          label.className = 'dialog-item-label';
+          label.textContent = item.label;
+          button.appendChild(label);
+          if (item.hint) {
+            const hint = document.createElement('span');
+            hint.className = 'dialog-item-hint';
+            hint.textContent = item.hint;
+            button.appendChild(hint);
+          }
+          button.addEventListener('click', () => {
+            listSelection = item.value;
+            listHost?.querySelectorAll<HTMLElement>('.dialog-item').forEach((node) => {
+              node.classList.toggle('on', node === button);
+            });
+          });
+          listHost.appendChild(button);
+        }
+        if (shown === 0) {
+          const empty = document.createElement('div');
+          empty.className = 'dialog-empty';
+          empty.textContent = t('没有匹配项');
+          listHost.appendChild(empty);
+        }
+      };
+      listSearch?.addEventListener('input', renderList);
+      renderList();
+    }
+
     const actions = document.createElement('div');
     actions.className = 'dialog-actions';
 
     const finish = (value: string | null) => {
-      const payload = value === null ? null : { action: value, input: input?.value ?? '' };
+      const payload = value === null
+        ? null
+        : { action: value, input: input?.value ?? '', selected: listSelection };
       overlay.classList.add('closing');
       window.setTimeout(() => {
         overlay.remove();
@@ -111,7 +191,7 @@ export function showDialog(options: DialogOptions): Promise<DialogResult | null>
     requestAnimationFrame(() => {
       overlay.classList.add('open');
       const primary = buttons.find((item) => item.action.kind === 'primary') ?? buttons[buttons.length - 1];
-      (input ?? primary?.button)?.focus();
+      (input ?? listSearch ?? primary?.button)?.focus();
       if (input) input.select();
     });
 
@@ -121,11 +201,17 @@ export function showDialog(options: DialogOptions): Promise<DialogResult | null>
         finish(null);
       } else if (event.key === 'Enter') {
         event.preventDefault();
+        if (listSearch && document.activeElement === listSearch && listHost) {
+          listHost.querySelector<HTMLButtonElement>('.dialog-item')?.click();
+          return;
+        }
         const primary = buttons.find((item) => item.action.kind === 'primary') ?? buttons[buttons.length - 1];
         if (primary) finish(primary.action.value);
       } else if (event.key === 'Tab') {
         const focusables: HTMLElement[] = [];
         if (input) focusables.push(input);
+        if (listSearch) focusables.push(listSearch);
+        listHost?.querySelectorAll<HTMLElement>('.dialog-item').forEach((item) => focusables.push(item));
         for (const item of buttons) focusables.push(item.button);
         if (focusables.length === 0) return;
         const index = focusables.indexOf(document.activeElement as HTMLElement);

@@ -155,7 +155,11 @@
               <span>链接</span>
               <input id="linkInput" data-no-i18n placeholder="https://…" autocomplete="off">
             </label>
-            <button id="btn-open-link" class="wide">打开链接</button>
+            <div class="topic-link-chip" id="topicLinkChip" data-no-i18n hidden></div>
+            <div class="grid2">
+              <button id="btn-open-link">打开链接</button>
+              <button id="btn-topic-link">链接主题</button>
+            </div>
           </div>
         </section>
 
@@ -273,6 +277,7 @@
             <button id="btn-image">图片</button>
             <button id="btn-attachment">附件</button>
             <button id="btn-audio">语音</button>
+            <button id="btn-audio-file">上传语音</button>
             <button id="btn-equation">公式</button>
           </div>
           <div class="labels" id="boundaryList" data-no-i18n></div>
@@ -281,7 +286,12 @@
             <span>清除元素</span>
             <button id="btn-clear-deco">清除</button>
           </div>
+        </section>
+
+        <section>
+          <h3>当前主题媒体</h3>
           <p class="note" id="mediaInfo" data-no-i18n>—</p>
+          <div class="media-list" id="mediaList" data-no-i18n></div>
         </section>
 
         <section>
@@ -361,6 +371,7 @@
 <input type="file" id="fileInput" accept=".wvm,.xmind,.md,.markdown,.txt,.opml,.xml" hidden>
 <input type="file" id="imageInput" accept="image/*" hidden>
 <input type="file" id="attachInput" hidden>
+<input type="file" id="audioInput" accept="audio/*" hidden>
 
 <script type="module" src="/apps/web/main.ts"></script>
 </body>

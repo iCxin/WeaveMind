@@ -29,6 +29,8 @@ import {
   patchTask,
   removeBoundariesAt,
   removeBoundary,
+  removeAttachment,
+  removeAudio,
   removeLabel,
   removeRelationshipsAt,
   removeSubtree,
@@ -82,7 +84,7 @@ import type { ViewHost } from './views/host.ts';
 import { downloadBlob, downloadText, printSvg, svgToPngBlob } from './exporters.ts';
 import { importFile } from './importers.ts';
 import { writeXmind } from '../../packages/io/src/xmind.ts';
-import { confirmDialog, promptDialog } from './ui/dialog.ts';
+import { confirmDialog, promptDialog, showDialog } from './ui/dialog.ts';
 import { showContextMenu, type MenuEntry } from './ui/context-menu.ts';
 import {
   clearBrowserDocument,
@@ -100,6 +102,7 @@ import {
 } from './ui/select.ts';
 import { layoutSheet } from '../../packages/layout/src/layout.ts';
 import { createEstimateMeasurer } from '../../packages/layout/src/measure.ts';
+import { stripRich } from '../../packages/core/src/rich.ts';
 
 /* ------------------------------------------------------------------ */
 /* DOM                                                                 */
@@ -932,6 +935,8 @@ function syncPanel(): void {
   const zoneList = must('zoneList');
   const boundaryList = must('boundaryList');
   const mediaInfo = must('mediaInfo');
+  const mediaList = must('mediaList');
+  const topicLinkChip = must('topicLinkChip');
 
   boundaryList.replaceChildren();
   for (const boundary of store.sheet.boundaries) {
@@ -975,7 +980,10 @@ function syncPanel(): void {
     toggleTaskBtn.classList.remove('on');
     taskFields.hidden = true;
     labelList.replaceChildren();
-    mediaInfo.textContent = '—';
+    mediaList.replaceChildren();
+    mediaInfo.hidden = false;
+    mediaInfo.textContent = t('选中主题后可查看媒体');
+    topicLinkChip.hidden = true;
     document.querySelectorAll<HTMLButtonElement>('.markers button').forEach((button) => {
       button.classList.remove('on');
     });
@@ -1046,6 +1054,34 @@ function syncPanel(): void {
   if (document.activeElement !== linkInput) {
     linkInput.value = topic.link?.type === 'web' ? topic.link.url : '';
   }
+  linkInput.placeholder = topic.link?.type === 'topic'
+    ? t('已链接到主题，输入网址可替换')
+    : 'https://…';
+
+  topicLinkChip.hidden = true;
+  topicLinkChip.replaceChildren();
+  if (topic.link?.type === 'topic') {
+    const targetSheet = store.doc.sheets[topic.link.sheetId];
+    const target = targetSheet?.topics[topic.link.topicId];
+    if (targetSheet && target) {
+      topicLinkChip.hidden = false;
+      const text = document.createElement('span');
+      text.className = 'topic-link-text';
+      text.textContent = `→ ${targetSheet.title} · ${stripRich(target.text) || t('（空主题）')}`;
+      const open = document.createElement('button');
+      open.textContent = t('打开');
+      open.addEventListener('click', () => openTopicLink(topic.link!));
+      const clear = document.createElement('button');
+      clear.textContent = '×';
+      clear.title = t('移除');
+      clear.addEventListener('click', () => {
+        store.commit('清除链接', (doc) => updateSheet(doc, setLink(getSheet(doc), topic.id, null)));
+      });
+      topicLinkChip.appendChild(text);
+      topicLinkChip.appendChild(open);
+      topicLinkChip.appendChild(clear);
+    }
+  }
 
   toggleTaskBtn.classList.toggle('on', Boolean(topic.task));
   toggleTaskBtn.setAttribute('aria-pressed', String(Boolean(topic.task)));
@@ -1065,12 +1101,165 @@ function syncPanel(): void {
     if (document.activeElement !== due) due.value = topic.task.due ?? '';
   }
 
-  const media: string[] = [];
-  if (topic.image) media.push(t('图片'));
-  if (topic.equation) media.push(`${t('公式')} ${topic.equation.latex}`);
-  if (topic.attachments?.length) media.push(`${t('附件')} ${topic.attachments.length}`);
-  if (topic.audio?.length) media.push(`${t('语音')} ${topic.audio.length}`);
-  mediaInfo.textContent = media.length ? media.join(' · ') : '—';
+  mediaList.replaceChildren();
+  let mediaCount = 0;
+
+  if (topic.image) {
+    mediaCount += 1;
+    const item = document.createElement('div');
+    item.className = 'media-item';
+
+    const preview = document.createElement('a');
+    preview.className = 'media-preview';
+    preview.href = topic.image.dataUrl;
+    preview.target = '_blank';
+    preview.rel = 'noopener';
+    preview.title = t('查看原图');
+    const image = document.createElement('img');
+    image.src = topic.image.dataUrl;
+    image.alt = '';
+    preview.appendChild(image);
+    item.appendChild(preview);
+
+    const body = document.createElement('div');
+    body.className = 'media-body';
+    const name = document.createElement('span');
+    name.className = 'media-name';
+    name.textContent = t('图片');
+    const meta = document.createElement('span');
+    meta.className = 'media-meta';
+    meta.textContent = `${topic.image.width} × ${topic.image.height}`;
+    body.appendChild(name);
+    body.appendChild(meta);
+    item.appendChild(body);
+
+    const actions = document.createElement('div');
+    actions.className = 'media-actions';
+    const view = document.createElement('a');
+    view.href = topic.image.dataUrl;
+    view.target = '_blank';
+    view.rel = 'noopener';
+    view.textContent = t('查看');
+    const remove = document.createElement('button');
+    remove.textContent = t('移除');
+    remove.addEventListener('click', () => {
+      store.commit('移除图片', (doc) => updateSheet(doc, setImage(getSheet(doc), topic.id, null)));
+    });
+    actions.appendChild(view);
+    actions.appendChild(remove);
+    item.appendChild(actions);
+    mediaList.appendChild(item);
+  }
+
+  for (const attachment of topic.attachments ?? []) {
+    mediaCount += 1;
+    const item = document.createElement('div');
+    item.className = 'media-item';
+
+    const badge = document.createElement('span');
+    badge.className = 'media-badge';
+    const extension = attachment.name.includes('.')
+      ? attachment.name.slice(attachment.name.lastIndexOf('.') + 1)
+      : 'FILE';
+    badge.textContent = extension.slice(0, 5);
+    item.appendChild(badge);
+
+    const body = document.createElement('div');
+    body.className = 'media-body';
+    const name = document.createElement('span');
+    name.className = 'media-name';
+    name.textContent = attachment.name;
+    name.title = attachment.name;
+    const meta = document.createElement('span');
+    meta.className = 'media-meta';
+    meta.textContent = formatBytes(attachment.size);
+    body.appendChild(name);
+    body.appendChild(meta);
+    item.appendChild(body);
+
+    const actions = document.createElement('div');
+    actions.className = 'media-actions';
+    const download = document.createElement('a');
+    download.href = attachment.dataUrl;
+    download.download = attachment.name;
+    download.textContent = t('下载');
+    const remove = document.createElement('button');
+    remove.textContent = t('移除');
+    remove.addEventListener('click', () => {
+      store.commit('移除附件', (doc) =>
+        updateSheet(doc, removeAttachment(getSheet(doc), topic.id, attachment.id))
+      );
+    });
+    actions.appendChild(download);
+    actions.appendChild(remove);
+    item.appendChild(actions);
+    mediaList.appendChild(item);
+  }
+
+  for (const audio of topic.audio ?? []) {
+    mediaCount += 1;
+    const item = document.createElement('div');
+    item.className = 'media-item media-item-audio';
+
+    const badge = document.createElement('span');
+    badge.className = 'media-badge';
+    badge.textContent = t('语音');
+    item.appendChild(badge);
+
+    const body = document.createElement('div');
+    body.className = 'media-body';
+    const name = document.createElement('span');
+    name.className = 'media-name';
+    name.textContent = audio.name || t('语音备注');
+    const meta = document.createElement('span');
+    meta.className = 'media-meta';
+    meta.textContent = audio.durationMs > 0 ? formatDuration(audio.durationMs) : '';
+    body.appendChild(name);
+    body.appendChild(meta);
+    item.appendChild(body);
+
+    const player = document.createElement('audio');
+    player.preload = 'metadata';
+    player.src = audio.dataUrl;
+    item.appendChild(player);
+
+    const actions = document.createElement('div');
+    actions.className = 'media-actions';
+    const play = document.createElement('button');
+    play.textContent = t('播放');
+    const syncPlay = (): void => {
+      play.textContent = player.paused ? t('播放') : t('暂停');
+    };
+    play.addEventListener('click', () => {
+      if (player.paused) {
+        void player.play().catch(() => toast('无法播放该音频', 'error'));
+      } else {
+        player.pause();
+      }
+    });
+    player.addEventListener('play', syncPlay);
+    player.addEventListener('pause', syncPlay);
+    player.addEventListener('ended', syncPlay);
+    const download = document.createElement('a');
+    download.href = audio.dataUrl;
+    download.download = `${audio.name || 'voice'}.webm`;
+    download.textContent = t('下载');
+    const remove = document.createElement('button');
+    remove.textContent = t('移除');
+    remove.addEventListener('click', () => {
+      store.commit('移除语音', (doc) =>
+        updateSheet(doc, removeAudio(getSheet(doc), topic.id, audio.id))
+      );
+    });
+    actions.appendChild(play);
+    actions.appendChild(download);
+    actions.appendChild(remove);
+    item.appendChild(actions);
+    mediaList.appendChild(item);
+  }
+
+  mediaInfo.hidden = mediaCount > 0;
+  mediaInfo.textContent = mediaCount > 0 ? '' : t('暂无图片、附件或语音');
 }
 
 /* ------------------------------------------------------------------ */
@@ -2880,10 +3069,14 @@ must('btn-open-link').addEventListener('click', () => {
   const topic = store.sheet.topics[id];
   if (topic?.link?.type === 'web') {
     window.open(topic.link.url, '_blank', 'noopener');
+  } else if (topic?.link?.type === 'topic') {
+    openTopicLink(topic.link);
   } else {
-    toast('该主题没有网页链接');
+    toast('该主题没有链接');
   }
 });
+
+must('btn-topic-link').addEventListener('click', chooseTopicLink);
 
 must('toggle-todo').addEventListener('click', () => {
   const id = primarySelection();
@@ -2962,6 +3155,109 @@ function imageSize(src: string): Promise<{ w: number; h: number }> {
   });
 }
 
+function audioDuration(src: string): Promise<number> {
+  return new Promise((resolve) => {
+    if (typeof Audio === 'undefined') { resolve(0); return; }
+    const audio = new Audio();
+    const finish = (value: number): void => resolve(value);
+    window.setTimeout(() => finish(0), 3000);
+    audio.onloadedmetadata = () => {
+      finish(Number.isFinite(audio.duration) ? Math.round(audio.duration * 1000) : 0);
+    };
+    audio.onerror = () => finish(0);
+    audio.src = src;
+  });
+}
+
+function formatBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  const index = Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)));
+  const value = bytes / 1024 ** index;
+  return `${value >= 10 || index === 0 ? Math.round(value) : value.toFixed(1)} ${units[index]}`;
+}
+
+function formatDuration(ms: number): string {
+  const total = Math.max(0, Math.round(ms / 1000));
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
+}
+
+type TopicLink = { readonly type: 'topic'; readonly sheetId: string; readonly topicId: TopicId };
+
+function focusTopic(id: TopicId): void {
+  window.requestAnimationFrame(() => {
+    const box = renderer.currentLayout?.boxes.get(id);
+    const size = renderer.size();
+    if (!box) { fitToContent(); return; }
+    const zoom = Math.max(0.9, Math.min(1.4, store.view.zoom || 1));
+    store.setView({
+      zoom,
+      panX: size.w / 2 - (box.x + box.w / 2) * zoom,
+      panY: size.h / 2 - (box.y + box.h / 2) * zoom
+    });
+  });
+}
+
+function openTopicLink(link: TopicLink): void {
+  const sheet = store.doc.sheets[link.sheetId];
+  const target = sheet?.topics[link.topicId];
+  if (!sheet || !target) {
+    toast('链接的主题已不存在', 'error');
+    return;
+  }
+  if (store.doc.activeSheetId !== link.sheetId) {
+    store.commit('切换画布', (doc) => activateSheet(doc, link.sheetId));
+  }
+  store.setView({
+    mode: 'map',
+    selection: new Set([link.topicId]),
+    collapsed: new Set(),
+    zoom: store.view.zoom || 1
+  });
+  focusTopic(link.topicId);
+  toast('已跳转到链接主题');
+}
+
+function chooseTopicLink(): void {
+  const id = primarySelection();
+  if (!id) { toast('请先选中主题'); return; }
+  const items: { label: string; hint: string; value: string }[] = [];
+  for (const sheetId of store.doc.sheetOrder) {
+    const sheet = store.doc.sheets[sheetId];
+    if (!sheet) continue;
+    for (const row of flatten(sheet)) {
+      if (sheetId === store.doc.activeSheetId && row.id === id) continue;
+      if (row.topic.kind === 'summary') continue;
+      items.push({
+        label: stripRich(row.topic.text) || t('（空主题）'),
+        hint: sheet.title,
+        value: `${sheetId}|${row.id}`
+      });
+    }
+  }
+  if (items.length === 0) { toast('没有可链接的主题'); return; }
+
+  void showDialog({
+    title: '链接到主题',
+    message: '选择要跳转的主题',
+    list: { label: '目标主题', search: true, items },
+    actions: [
+      { label: '取消', value: 'cancel', kind: 'ghost' },
+      { label: '确定', value: 'ok', kind: 'primary' }
+    ]
+  }).then((result) => {
+    if (!result || result.action !== 'ok' || !result.selected) return;
+    const separator = result.selected.indexOf('|');
+    if (separator < 0) return;
+    const sheetId = result.selected.slice(0, separator);
+    const topicId = result.selected.slice(separator + 1);
+    store.commit('设置主题链接', (doc) =>
+      updateSheet(doc, setLink(getSheet(doc), id, { type: 'topic', sheetId, topicId }))
+    );
+    toast('已设置主题链接');
+  });
+}
+
 must('btn-boundary').addEventListener('click', () => {
   const ids = selectedIds().filter((id) => id !== store.sheet.rootId);
   if (ids.length === 0) { toast('请先选中主题（中心主题不可加外框）'); return; }
@@ -3011,12 +3307,16 @@ must('btn-zone').addEventListener('click', () => {
 });
 
 const imageInput = must<HTMLInputElement>('imageInput');
-must('btn-image').addEventListener('click', () => imageInput.click());
+must('btn-image').addEventListener('click', () => {
+  if (!primarySelection()) { toast('请先选中主题'); return; }
+  imageInput.click();
+});
 imageInput.addEventListener('change', () => {
   const file = imageInput.files?.[0];
   imageInput.value = '';
   const id = primarySelection();
-  if (!file || !id) return;
+  if (!file) return;
+  if (!id) { toast('请先选中主题'); return; }
   if (file.size > 10 * 1024 * 1024) { toast('图片超过 10 MB，请先压缩', 'error'); return; }
   void (async () => {
     const dataUrl = await readAsDataUrl(file);
@@ -3029,12 +3329,16 @@ imageInput.addEventListener('change', () => {
 });
 
 const attachInput = must<HTMLInputElement>('attachInput');
-must('btn-attachment').addEventListener('click', () => attachInput.click());
+must('btn-attachment').addEventListener('click', () => {
+  if (!primarySelection()) { toast('请先选中主题'); return; }
+  attachInput.click();
+});
 attachInput.addEventListener('change', () => {
   const file = attachInput.files?.[0];
   attachInput.value = '';
   const id = primarySelection();
-  if (!file || !id) return;
+  if (!file) return;
+  if (!id) { toast('请先选中主题'); return; }
   if (file.size > 10 * 1024 * 1024) { toast('附件超过 10 MB，请改用较小的文件', 'error'); return; }
   void (async () => {
     const dataUrl = await readAsDataUrl(file);
@@ -3057,6 +3361,10 @@ must('btn-audio').addEventListener('click', () => {
   if (recorder) { recorder.stop(); return; }
   const id = primarySelection();
   if (!id) { toast('请先选中主题'); return; }
+  if (!window.isSecureContext) {
+    toast('录音需要 HTTPS 或 localhost 环境', 'error');
+    return;
+  }
   if (typeof MediaRecorder === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
     toast('当前环境不支持录音', 'error');
     return;
@@ -3076,11 +3384,12 @@ must('btn-audio').addEventListener('click', () => {
         if (blob.size === 0) { toast('未录到音频', 'error'); return; }
         void (async () => {
           const dataUrl = await readAsDataUrl(new File([blob], 'note.webm', { type: blob.type }));
+          const durationMs = await audioDuration(dataUrl);
           store.commit('添加语音备注', (doc) =>
             updateSheet(doc, addAudio(getSheet(doc), id, {
               id: 'au' + Date.now(),
               name: '语音备注',
-              durationMs: 0,
+              durationMs,
               dataUrl
             }))
           );
@@ -3091,8 +3400,35 @@ must('btn-audio').addEventListener('click', () => {
       must('btn-audio').classList.add('recording');
       toast('录音中，再次点击结束');
     } catch {
-      toast('无法访问麦克风', 'error');
+      toast('无法访问麦克风，请检查权限或使用上传语音', 'error');
     }
+  })();
+});
+
+const audioInput = must<HTMLInputElement>('audioInput');
+must('btn-audio-file').addEventListener('click', () => {
+  if (!primarySelection()) { toast('请先选中主题'); return; }
+  audioInput.click();
+});
+audioInput.addEventListener('change', () => {
+  const file = audioInput.files?.[0];
+  audioInput.value = '';
+  const id = primarySelection();
+  if (!file) return;
+  if (!id) { toast('请先选中主题'); return; }
+  if (file.size > 20 * 1024 * 1024) { toast('音频超过 20 MB，请改用较小的文件', 'error'); return; }
+  void (async () => {
+    const dataUrl = await readAsDataUrl(file);
+    const durationMs = await audioDuration(dataUrl);
+    store.commit('添加语音备注', (doc) =>
+      updateSheet(doc, addAudio(getSheet(doc), id, {
+        id: 'au' + Date.now(),
+        name: file.name,
+        durationMs,
+        dataUrl
+      }))
+    );
+    toast('已添加语音');
   })();
 });
 

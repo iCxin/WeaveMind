@@ -697,6 +697,14 @@ export function clearAttachments(sheet: Sheet, id: TopicId): Sheet {
   return putTopic(sheet, { ...topic, attachments: undefined });
 }
 
+export function removeAttachment(sheet: Sheet, id: TopicId, attachmentId: string): Sheet {
+  const topic = requireTopic(sheet, id);
+  const current = topic.attachments ?? [];
+  const list = current.filter((item) => item.id !== attachmentId);
+  if (list.length === current.length) return sheet;
+  return putTopic(sheet, { ...topic, attachments: list.length ? list : undefined });
+}
+
 export function addAudio(sheet: Sheet, id: TopicId, audio: AudioNote): Sheet {
   const topic = requireTopic(sheet, id);
   const list = [...(topic.audio ?? []), audio];
@@ -706,6 +714,14 @@ export function addAudio(sheet: Sheet, id: TopicId, audio: AudioNote): Sheet {
 export function clearAudio(sheet: Sheet, id: TopicId): Sheet {
   const topic = requireTopic(sheet, id);
   return putTopic(sheet, { ...topic, audio: undefined });
+}
+
+export function removeAudio(sheet: Sheet, id: TopicId, audioId: string): Sheet {
+  const topic = requireTopic(sheet, id);
+  const current = topic.audio ?? [];
+  const list = current.filter((item) => item.id !== audioId);
+  if (list.length === current.length) return sheet;
+  return putTopic(sheet, { ...topic, audio: list.length ? list : undefined });
 }
 
 export function setStructure(

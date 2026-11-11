@@ -2,11 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  addAttachment,
+  addAudio,
   addChild,
   addLabel,
   createWorkbook,
   getSheet,
   patchTask,
+  removeAttachment,
+  removeAudio,
   removeLabel,
   setLink,
   setNote,
@@ -95,6 +99,52 @@ test('多画布：复制保留内容与结构且互不影响', () => {
   assert.equal(copy.title, '示例 副本');
   assert.notEqual(copy.id, sheetId);
   assert.equal(result.doc.sheetOrder.length, 2);
+});
+
+test('元素：附件与语音可单独移除', () => {
+  let { doc, sheetId } = docWithTree();
+  let sheet = getSheet(doc, sheetId);
+  sheet = addAttachment(sheet, 'a', {
+    id: 'att-1',
+    name: 'brief.pdf',
+    mime: 'application/pdf',
+    size: 10,
+    dataUrl: 'data:application/pdf;base64,AA=='
+  });
+  sheet = addAttachment(sheet, 'a', {
+    id: 'att-2',
+    name: 'notes.txt',
+    mime: 'text/plain',
+    size: 6,
+    dataUrl: 'data:text/plain;base64,aGVsbG8='
+  });
+  sheet = addAudio(sheet, 'a', {
+    id: 'au-1',
+    name: 'voice.webm',
+    durationMs: 1200,
+    dataUrl: 'data:audio/webm;base64,AA=='
+  });
+  sheet = removeAttachment(sheet, 'a', 'att-1');
+  assert.deepEqual(sheet.topics.a?.attachments?.map((item) => item.id), ['att-2']);
+  sheet = removeAudio(sheet, 'a', 'au-1');
+  assert.equal(sheet.topics.a?.audio, undefined);
+  doc = updateSheet(doc, sheet);
+  assert.equal(Object.keys(doc.sheets).length, 1);
+});
+
+test('链接：主题之间可建立内部链接', () => {
+  const { doc, sheetId } = docWithTree();
+  const sheet = getSheet(doc, sheetId);
+  const linked = setLink(sheet, 'a', {
+    type: 'topic',
+    sheetId,
+    topicId: 'b'
+  });
+  assert.deepEqual(linked.topics.a?.link, {
+    type: 'topic',
+    sheetId,
+    topicId: 'b'
+  });
 });
 
 test('元素：笔记为空时自动清除', () => {
