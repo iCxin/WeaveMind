@@ -62,6 +62,7 @@ import {
   removeSheet,
   renameSheet
 } from '../../packages/core/src/sheets.ts';
+import { STRUCTURE_LABELS } from '../../packages/core/src/types.ts';
 import type {
   MarkerId,
   ShapeKind,
@@ -109,7 +110,11 @@ const boundaryEditor = must<HTMLInputElement>('boundaryEditor');
 const hint = must('hint');
 const toastEl = must('toast');
 const fileInput = must<HTMLInputElement>('fileInput');
-const structureSelect = must<HTMLSelectElement>('structure');
+const structureButton = must('btn-structure');
+const structureLabel = must('structureLabel');
+const structureGlyph = must('structureGlyph');
+const structureList = must('structureList');
+const structureMenu = must('structureMenu');
 const sheetbar = must('sheetbar');
 const searchInput = must<HTMLInputElement>('search');
 const searchCount = must('searchCount');
@@ -120,6 +125,100 @@ const viewPitch = must('view-pitch');
 const viewGantt = must('view-gantt');
 const exportList = must('exportList');
 const autosaveEl = must('autosaveState');
+
+const STRUCTURE_SHORT: Record<StructureKind, string> = {
+  mindmap: '思维导图',
+  'logic-right': '逻辑 →',
+  'logic-left': '逻辑 ←',
+  'org-down': '组织 ↓',
+  'org-up': '组织 ↑',
+  'tree-right': '树形 →',
+  'tree-left': '树形 ←',
+  'fishbone-right': '鱼骨 →',
+  'fishbone-left': '鱼骨 ←',
+  'timeline-right': '时间轴'
+};
+
+const STRUCTURE_OPTIONS = (Object.keys(STRUCTURE_LABELS) as StructureKind[])
+  .map((id) => ({ id, label: STRUCTURE_LABELS[id], short: STRUCTURE_SHORT[id] }));
+
+function structureIcon(kind: StructureKind): string {
+  const dot = (x: number, y: number, r = 2.4): string =>
+    `<circle cx="${x}" cy="${y}" r="${r}" fill="currentColor"/>`;
+  const link = (x1: number, y1: number, x2: number, y2: number): string =>
+    `<path d="M${x1} ${y1}L${x2} ${y2}" stroke="currentColor" stroke-opacity=".45" stroke-width="1.1" stroke-linecap="round"/>`;
+  let body = '';
+
+  switch (kind) {
+    case 'mindmap':
+      body = [
+        link(22, 14, 8, 6), link(22, 14, 8, 22), link(22, 14, 36, 6), link(22, 14, 36, 22),
+        dot(22, 14, 2.9), dot(8, 6), dot(8, 22), dot(36, 6), dot(36, 22)
+      ].join('');
+      break;
+    case 'logic-right':
+      body = [
+        link(6, 14, 26, 6), link(6, 14, 26, 14), link(6, 14, 26, 22),
+        link(26, 6, 39, 6), link(26, 22, 39, 22),
+        dot(6, 14, 2.9), dot(26, 6), dot(26, 14), dot(26, 22), dot(39, 6), dot(39, 22)
+      ].join('');
+      break;
+    case 'logic-left':
+      body = [
+        link(38, 14, 18, 6), link(38, 14, 18, 14), link(38, 14, 18, 22),
+        link(18, 6, 5, 6), link(18, 22, 5, 22),
+        dot(38, 14, 2.9), dot(18, 6), dot(18, 14), dot(18, 22), dot(5, 6), dot(5, 22)
+      ].join('');
+      break;
+    case 'org-down':
+      body = [
+        link(22, 5, 7, 23), link(22, 5, 22, 23), link(22, 5, 37, 23),
+        dot(22, 5, 2.9), dot(7, 23), dot(22, 23), dot(37, 23)
+      ].join('');
+      break;
+    case 'org-up':
+      body = [
+        link(22, 23, 7, 5), link(22, 23, 22, 5), link(22, 23, 37, 5),
+        dot(22, 23, 2.9), dot(7, 5), dot(22, 5), dot(37, 5)
+      ].join('');
+      break;
+    case 'tree-right':
+      body = [
+        link(5, 14, 21, 14), link(21, 14, 38, 7), link(21, 14, 38, 21),
+        dot(5, 14, 2.9), dot(21, 14), dot(38, 7), dot(38, 21)
+      ].join('');
+      break;
+    case 'tree-left':
+      body = [
+        link(39, 14, 23, 14), link(23, 14, 6, 7), link(23, 14, 6, 21),
+        dot(39, 14, 2.9), dot(23, 14), dot(6, 7), dot(6, 21)
+      ].join('');
+      break;
+    case 'fishbone-right':
+      body = [
+        `<path d="M3 14H41" stroke="currentColor" stroke-opacity=".45" stroke-width="1.1" stroke-linecap="round"/>`,
+        link(12, 14, 18, 6), link(22, 14, 28, 22), link(32, 14, 38, 6),
+        dot(18, 6), dot(28, 22), dot(38, 6), dot(3, 14, 2)
+      ].join('');
+      break;
+    case 'fishbone-left':
+      body = [
+        `<path d="M3 14H41" stroke="currentColor" stroke-opacity=".45" stroke-width="1.1" stroke-linecap="round"/>`,
+        link(32, 14, 26, 6), link(22, 14, 16, 22), link(12, 14, 6, 6),
+        dot(26, 6), dot(16, 22), dot(6, 6), dot(41, 14, 2)
+      ].join('');
+      break;
+    case 'timeline-right':
+      body = [
+        `<path d="M3 14H41" stroke="currentColor" stroke-opacity=".45" stroke-width="1.1" stroke-linecap="round"/>`,
+        link(10, 14, 10, 7), link(22, 14, 22, 21), link(34, 14, 34, 7),
+        dot(10, 7), dot(22, 21), dot(34, 7), dot(12, 14, 1.7), dot(24, 14, 1.7)
+      ].join('');
+      break;
+  }
+
+  return `<svg viewBox="0 0 44 28" aria-hidden="true">${body}</svg>`;
+}
 
 /* ------------------------------------------------------------------ */
 /* 演示文档                                                            */
@@ -340,7 +439,7 @@ function syncToolbar(matchCount: number): void {
   }
   const zoomLabel = document.getElementById('zoomLabel');
   if (zoomLabel) zoomLabel.textContent = `${Math.round(store.view.zoom * 100)}%`;
-  if (structureSelect.value !== store.sheet.structure) structureSelect.value = store.sheet.structure;
+  syncStructurePicker();
 
   searchCount.textContent = store.view.query ? String(matchCount) : '';
   if (searchInput.value !== store.view.query) searchInput.value = store.view.query;
@@ -348,6 +447,58 @@ function syncToolbar(matchCount: number): void {
   filterSelect.title = store.view.filter === 'all'
     ? '筛选主题'
     : `筛选：${lastFilterCount} 个主题`;
+}
+
+function syncStructurePicker(): void {
+  const current = STRUCTURE_OPTIONS.find((option) => option.id === store.sheet.structure)
+    ?? STRUCTURE_OPTIONS[0]!;
+  structureLabel.textContent = current.short;
+  structureGlyph.innerHTML = structureIcon(current.id);
+  structureButton.title = `结构：${current.label}`;
+  structureButton.setAttribute('aria-expanded', String(!structureList.hidden));
+  structureList.querySelectorAll<HTMLButtonElement>('[data-structure]').forEach((button) => {
+    const active = button.dataset.structure === current.id;
+    button.classList.toggle('on', active);
+    button.setAttribute('aria-checked', String(active));
+  });
+}
+
+function setupStructurePicker(): void {
+  const frag = document.createDocumentFragment();
+  for (const option of STRUCTURE_OPTIONS) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'structure-option';
+    button.dataset.structure = option.id;
+    button.setAttribute('role', 'menuitemradio');
+    button.setAttribute('aria-checked', 'false');
+    button.innerHTML =
+      `<span class="structure-icon">${structureIcon(option.id)}</span>` +
+      `<span class="structure-name">${option.label}</span>`;
+    button.addEventListener('click', () => {
+      structureList.hidden = true;
+      structureButton.setAttribute('aria-expanded', 'false');
+      store.commit('切换结构', (doc) =>
+        updateSheet(doc, setStructure(getSheet(doc), null, option.id)));
+    });
+    frag.appendChild(button);
+  }
+  structureList.replaceChildren(frag);
+
+  structureButton.addEventListener('click', (event) => {
+    event.stopPropagation();
+    const open = structureList.hidden;
+    structureList.hidden = !open;
+    structureButton.setAttribute('aria-expanded', String(open));
+  });
+
+  document.addEventListener('click', (event) => {
+    if (!(event.target instanceof Node)) return;
+    if (!structureList.hidden && !structureMenu.contains(event.target)) {
+      structureList.hidden = true;
+      structureButton.setAttribute('aria-expanded', 'false');
+    }
+  });
 }
 
 function primarySelection(): TopicId | null {
@@ -1886,6 +2037,11 @@ window.addEventListener('keydown', (event) => {
     return;
   }
   if (key === 'Escape') {
+    if (!structureList.hidden) {
+      structureList.hidden = true;
+      structureButton.setAttribute('aria-expanded', 'false');
+      return;
+    }
     const app = document.querySelector('.app');
     if (app?.classList.contains('zen')) {
       toggleZen(false);
@@ -1954,11 +2110,6 @@ must('btn-collapse').addEventListener('click', () => {
 
 document.querySelectorAll<HTMLElement>('#viewTabs button').forEach((button) => {
   button.addEventListener('click', () => setMode((button.dataset.mode as ViewMode) ?? 'map'));
-});
-
-structureSelect.addEventListener('change', () => {
-  const value = structureSelect.value as StructureKind;
-  store.commit('切换结构', (doc) => updateSheet(doc, setStructure(getSheet(doc), null, value)));
 });
 
 fileInput.addEventListener('change', () => {
@@ -2676,6 +2827,8 @@ store.subscribe(() => {
 setInterval(() => {
   if (store.dirty && Date.now() - lastAutosaveAt >= 5000) persistAutosave();
 }, 5000);
+
+setupStructurePicker();
 
 const initialRect = stage.getBoundingClientRect();
 renderer.resize(initialRect.width || 960, initialRect.height || 620);

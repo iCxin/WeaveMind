@@ -1,5 +1,7 @@
 # 织思 WeaveMind
 
+[![Built with Trae](https://img.shields.io/badge/Built%20with-Trae-32F08C?style=flat-square)](https://www.trae.ai/)
+
 离线优先的本地思维导图工作台。零运行时依赖，原生 ES Modules + Canvas 实现，支持导图 / 大纲 / 演说 / 甘特四视图、多画布、主题样式、标记、筛选、剪贴板、浮动主题、外框 / 联系 / 概要 / 专区，以及 `.wvm`、XMind、Markdown、OPML、SVG、PNG 等格式。
 
 ## 一键部署到 EdgeOne

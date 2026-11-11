@@ -81,21 +81,14 @@
       </div>
     </div>
 
-    <label class="field">
-      <span>结构</span>
-      <select id="structure">
-        <option value="mindmap">思维导图</option>
-        <option value="logic-right">逻辑图（向右）</option>
-        <option value="logic-left">逻辑图（向左）</option>
-        <option value="org-down">组织结构图（向下）</option>
-        <option value="org-up">组织结构图（向上）</option>
-        <option value="tree-right">树形图（向右）</option>
-        <option value="tree-left">树形图（向左）</option>
-        <option value="fishbone-right">鱼骨图（向右）</option>
-        <option value="fishbone-left">鱼骨图（向左）</option>
-        <option value="timeline-right">时间轴（水平）</option>
-      </select>
-    </label>
+    <div class="menu structure-menu" id="structureMenu">
+      <button id="btn-structure" class="structure-trigger" title="选择结构" aria-haspopup="menu" aria-expanded="false">
+        <span class="structure-icon" id="structureGlyph"></span>
+        <span id="structureLabel">思维导图</span>
+        <span class="structure-chev">▾</span>
+      </button>
+      <div class="structure-pop" id="structureList" role="menu" hidden></div>
+    </div>
 
     <button id="btn-fit" title="适应画布">适应</button>
     <button id="btn-zen" title="专注模式（Esc 退出）">专注</button>
